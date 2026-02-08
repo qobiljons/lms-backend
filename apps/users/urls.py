@@ -7,7 +7,10 @@ urlpatterns = [
     path("signup/", api.SignupAPIView.as_view(), name="signup"),
     path("login/", api.LoginAPIView.as_view(), name="login"),
     path("users/", api.UserListAPIView.as_view(), name="user_list"),
+    path("users/create/", api.AdminCreateUserAPIView.as_view(), name="admin_create_user"),
     path("me/", api.MeAPIView.as_view(), name="me"),
+    path("me/profile/", api.ProfileAPIView.as_view(), name="me_profile"),
+    path("me/change-password/", api.ChangePasswordAPIView.as_view(), name="change_password"),
     path("logout/", api.LogoutAPIView.as_view(), name="logout"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]

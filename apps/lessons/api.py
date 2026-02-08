@@ -5,13 +5,13 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdmin
 
-from .models import Course
-from .serializers import CourseSerializer
+from .models import Lesson
+from .serializers import LessonSerializer
 
 
-class CourseListAPIView(generics.ListCreateAPIView):
-    queryset = Course.objects.all()
-    serializer_class = CourseSerializer
+class LessonListAPIView(generics.ListCreateAPIView):
+    queryset = Lesson.objects.all()
+    serializer_class = LessonSerializer
 
     def get_permissions(self):
         if self.request.method == "GET":
@@ -19,7 +19,7 @@ class CourseListAPIView(generics.ListCreateAPIView):
         return [permissions.IsAuthenticated(), IsAdmin()]
 
 
-class CourseDetailAPIView(APIView):
+class LessonDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_permissions(self):
@@ -27,42 +27,42 @@ class CourseDetailAPIView(APIView):
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated(), IsAdmin()]
 
-    def _get_course(self, course_id):
+    def _get_lesson(self, lesson_id):
         try:
-            return Course.objects.get(pk=course_id)
-        except Course.DoesNotExist:
+            return Lesson.objects.get(pk=lesson_id)
+        except Lesson.DoesNotExist:
             return None
 
-    @swagger_auto_schema(responses={200: CourseSerializer})
-    def get(self, request, course_id):
-        course = self._get_course(course_id)
-        if course is None:
+    @swagger_auto_schema(responses={200: LessonSerializer})
+    def get(self, request, lesson_id):
+        lesson = self._get_lesson(lesson_id)
+        if lesson is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(CourseSerializer(course).data)
+        return Response(LessonSerializer(lesson).data)
 
-    @swagger_auto_schema(request_body=CourseSerializer, responses={200: CourseSerializer})
-    def put(self, request, course_id):
-        course = self._get_course(course_id)
-        if course is None:
+    @swagger_auto_schema(request_body=LessonSerializer, responses={200: LessonSerializer})
+    def put(self, request, lesson_id):
+        lesson = self._get_lesson(lesson_id)
+        if lesson is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = CourseSerializer(course, data=request.data)
+        serializer = LessonSerializer(lesson, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-    @swagger_auto_schema(request_body=CourseSerializer, responses={200: CourseSerializer})
-    def patch(self, request, course_id):
-        course = self._get_course(course_id)
-        if course is None:
+    @swagger_auto_schema(request_body=LessonSerializer, responses={200: LessonSerializer})
+    def patch(self, request, lesson_id):
+        lesson = self._get_lesson(lesson_id)
+        if lesson is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = CourseSerializer(course, data=request.data, partial=True)
+        serializer = LessonSerializer(lesson, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-    def delete(self, request, course_id):
-        course = self._get_course(course_id)
-        if course is None:
+    def delete(self, request, lesson_id):
+        lesson = self._get_lesson(lesson_id)
+        if lesson is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
-        course.delete()
+        lesson.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
