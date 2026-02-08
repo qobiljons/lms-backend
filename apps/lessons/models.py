@@ -11,7 +11,7 @@ class Lesson(models.Model):
         related_name="lessons",
         db_column="course_id",
     )
-    # This maps to a BIGINT user_id column and keeps referential integrity.
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
