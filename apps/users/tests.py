@@ -9,6 +9,7 @@ class UserProfileSignalTests(TestCase):
         user_model = get_user_model()
         user = user_model.objects.create_user(
             email="signal-test@example.com",
+            username="signaltest",
             password="strong-password-123",
         )
 

@@ -1,3 +1,3 @@
 from django.shortcuts import render
 
-# Create your views here.
+# Legacy placeholder views module (not used by API endpoints).
