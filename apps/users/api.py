@@ -7,6 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .permissions import IsAdmin
 from .serializers import (
     AdminCreateUserSerializer,
+    AdminSetPasswordSerializer,
+    AdminUpdateUserSerializer,
     ChangePasswordSerializer,
     LoginSerializer,
     SignupSerializer,
@@ -64,6 +66,58 @@ class UserListAPIView(generics.ListAPIView):
     def get_queryset(self):
         from django.contrib.auth import get_user_model
         return get_user_model().objects.all()
+
+
+class UserDetailAPIView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
+
+    def _get_user(self, username):
+        from django.contrib.auth import get_user_model
+        try:
+            return get_user_model().objects.get(username=username)
+        except get_user_model().DoesNotExist:
+            return None
+
+    @swagger_auto_schema(responses={200: UserSerializer})
+    def get(self, request, username):
+        user = self._get_user(username)
+        if user is None:
+            return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(UserSerializer(user).data)
+
+    @swagger_auto_schema(request_body=AdminUpdateUserSerializer, responses={200: UserSerializer})
+    def patch(self, request, username):
+        user = self._get_user(username)
+        if user is None:
+            return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminUpdateUserSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(user).data)
+
+    def delete(self, request, username):
+        user = self._get_user(username)
+        if user is None:
+            return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminSetPasswordAPIView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
+
+    @swagger_auto_schema(request_body=AdminSetPasswordSerializer)
+    def post(self, request, username):
+        from django.contrib.auth import get_user_model
+        try:
+            user = get_user_model().objects.get(username=username)
+        except get_user_model().DoesNotExist:
+            return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminSetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data["new_password"])
+        user.save()
+        return Response({"detail": "password updated"})
 
 
 class AdminCreateUserAPIView(APIView):
@@ -146,3 +200,31 @@ class LogoutAPIView(APIView):
                 {"detail": "invalid token"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class DashboardStatsAPIView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
+
+    def get(self, request):
+        from django.contrib.auth import get_user_model
+        from apps.courses.models import Course
+        from apps.lessons.models import Lesson
+
+        User = get_user_model()
+
+        return Response({
+            "users": {
+                "total": User.objects.count(),
+                "active": User.objects.filter(is_active=True).count(),
+                "inactive": User.objects.filter(is_active=False).count(),
+                "students": User.objects.filter(role="student").count(),
+                "instructors": User.objects.filter(role="instructor").count(),
+                "admins": User.objects.filter(role="admin").count(),
+            },
+            "courses": {
+                "total": Course.objects.count(),
+            },
+            "lessons": {
+                "total": Lesson.objects.count(),
+            },
+        })

@@ -5,9 +5,15 @@ from .models import UserProfile
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    default_avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
-        fields = ("phone", "avatar", "bio")
+        fields = ("phone", "avatar", "default_avatar", "bio")
+
+    def get_default_avatar(self, obj):
+        seed = obj.user.username
+        return f"https://api.dicebear.com/9.x/avataaars/svg?seed={seed}"
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -15,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = get_user_model()
-        fields = ("id", "username", "email", "first_name", "last_name", "role", "profile")
+        fields = ("id", "username", "email", "first_name", "last_name", "role", "is_active", "profile")
 
 
 class UpdateMeSerializer(serializers.ModelSerializer):
@@ -42,6 +48,34 @@ class UpdateMeSerializer(serializers.ModelSerializer):
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+
+
+class AdminUpdateUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ("username", "email", "first_name", "last_name", "role", "is_active")
+        extra_kwargs = {
+            "username": {"required": False},
+            "email": {"required": False},
+            "role": {"required": False},
+            "is_active": {"required": False},
+        }
+
+    def validate_email(self, value):
+        user = self.instance
+        if get_user_model().objects.filter(email=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("email already in use")
+        return value
+
+    def validate_username(self, value):
+        user = self.instance
+        if get_user_model().objects.filter(username=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("username already in use")
+        return value
+
+
+class AdminSetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(min_length=8, write_only=True)
 
 
