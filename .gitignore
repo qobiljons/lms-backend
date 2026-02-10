@@ -17,3 +17,5 @@ media/
 # OS
 .DS_Store
 .idea
+
+auth.txt

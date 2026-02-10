@@ -10,8 +10,8 @@ from .serializers import LessonSerializer
 
 
 class LessonListAPIView(generics.ListCreateAPIView):
-    queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    queryset = Lesson.objects.all()
 
     def get_permissions(self):
         if self.request.method == "GET":

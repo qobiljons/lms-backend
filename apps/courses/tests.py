@@ -57,28 +57,28 @@ class CourseAPITests(TestCase):
     def test_admin_get_course(self):
         course = Course.objects.create(title="C1", description="d")
         self._auth(self.admin)
-        res = self.client.get(f"/courses/{course.id}/")
+        res = self.client.get(f"/courses/{course.slug}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["title"], "C1")
 
     def test_admin_update_course(self):
         course = Course.objects.create(title="Old", description="d")
         self._auth(self.admin)
-        res = self.client.put(f"/courses/{course.id}/", {"title": "New", "description": "d"})
+        res = self.client.put(f"/courses/{course.slug}/", {"title": "New", "description": "d"})
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["title"], "New")
 
     def test_admin_patch_course(self):
         course = Course.objects.create(title="Old", description="d")
         self._auth(self.admin)
-        res = self.client.patch(f"/courses/{course.id}/", {"title": "Patched"})
+        res = self.client.patch(f"/courses/{course.slug}/", {"title": "Patched"})
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["title"], "Patched")
 
     def test_admin_delete_course(self):
         course = Course.objects.create(title="Del", description="d")
         self._auth(self.admin)
-        res = self.client.delete(f"/courses/{course.id}/")
+        res = self.client.delete(f"/courses/{course.slug}/")
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Course.objects.filter(id=course.id).exists())
 
@@ -92,7 +92,7 @@ class CourseAPITests(TestCase):
     def test_student_can_get_course(self):
         course = Course.objects.create(title="C1", description="d")
         self._auth(self.student)
-        res = self.client.get(f"/courses/{course.id}/")
+        res = self.client.get(f"/courses/{course.slug}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_student_cannot_create_course(self):
@@ -103,13 +103,13 @@ class CourseAPITests(TestCase):
     def test_student_cannot_update_course(self):
         course = Course.objects.create(title="C1", description="d")
         self._auth(self.student)
-        res = self.client.put(f"/courses/{course.id}/", {"title": "X", "description": "d"})
+        res = self.client.put(f"/courses/{course.slug}/", {"title": "X", "description": "d"})
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_student_cannot_delete_course(self):
         course = Course.objects.create(title="C1", description="d")
         self._auth(self.student)
-        res = self.client.delete(f"/courses/{course.id}/")
+        res = self.client.delete(f"/courses/{course.slug}/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     # --- Unauthenticated ---

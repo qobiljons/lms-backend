@@ -6,5 +6,5 @@ from .models import Course
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ("id", "title", "description", "created_at")
-        read_only_fields = ("id", "created_at")
+        fields = ("id", "title", "slug", "description", "logo", "created_at")
+        read_only_fields = ("id", "slug", "created_at")

@@ -19,6 +19,7 @@ class Lesson(models.Model):
     )
     video_provider = models.CharField(max_length=50, blank=True, null=True)
     youtube_url = models.TextField(blank=True, null=True)
+    homework = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
+    'django_filters',
     'apps.users.apps.UsersConfig',
     'apps.courses.apps.CoursesConfig',
     'apps.lessons.apps.LessonsConfig',

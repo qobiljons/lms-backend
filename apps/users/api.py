@@ -1,5 +1,8 @@
+from django_filters import rest_framework as django_filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, serializers as drf_serializers, status
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -59,9 +62,21 @@ class LoginAPIView(APIView):
         return Response({**UserSerializer(user).data, "tokens": tokens})
 
 
+class UserPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = "page_size"
+    max_page_size = 50
+
+
 class UserListAPIView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = (permissions.IsAuthenticated, IsAdmin)
+    pagination_class = UserPagination
+    filter_backends = (django_filters.DjangoFilterBackend, SearchFilter, OrderingFilter)
+    filterset_fields = ("role", "is_active")
+    search_fields = ("username", "email", "first_name", "last_name")
+    ordering_fields = ("username", "email", "date_joined")
+    ordering = ("-date_joined",)
 
     def get_queryset(self):
         from django.contrib.auth import get_user_model

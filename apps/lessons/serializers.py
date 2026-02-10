@@ -14,6 +14,7 @@ class LessonSerializer(serializers.ModelSerializer):
             "user",
             "video_provider",
             "youtube_url",
+            "homework",
             "created_at",
         )
         read_only_fields = ("id", "created_at")
