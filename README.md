@@ -43,7 +43,10 @@ Authorization: Bearer <access_token>
 
 ## Pagination
 
-All list endpoints return paginated responses with **20 items per page**:
+List endpoints are paginated. Defaults:
+- Users: **5 items per page** (supports `?page_size=` up to 50)
+- Courses: **5 items per page** (supports `?page_size=` up to 50)
+- Lessons: **8 items per page** (global default)
 
 ```json
 {
@@ -83,6 +86,7 @@ Navigate pages with `?page=N` query parameter.
 | GET    | `/auth/me/profile/`         | Required | Get current user profile           |
 | PATCH  | `/auth/me/profile/`         | Required | Update phone, bio, avatar          |
 | POST   | `/auth/me/change-password/` | Required | Change password                    |
+| GET    | `/auth/dashboard/stats/`    | Admin    | Summary counts for users/courses/lessons |
 
 #### POST `/auth/signup/`
 
@@ -106,6 +110,13 @@ Navigate pages with `?page=N` query parameter.
   "first_name": "John",
   "last_name": "Doe",
   "role": "student",
+  "is_active": true,
+  "profile": {
+    "phone": "",
+    "avatar": null,
+    "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
+    "bio": ""
+  },
   "tokens": {
     "refresh": "<refresh_token>",
     "access": "<access_token>"
@@ -132,6 +143,13 @@ Navigate pages with `?page=N` query parameter.
   "first_name": "John",
   "last_name": "Doe",
   "role": "student",
+  "is_active": true,
+  "profile": {
+    "phone": "",
+    "avatar": null,
+    "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
+    "bio": ""
+  },
   "tokens": {
     "refresh": "<refresh_token>",
     "access": "<access_token>"
@@ -185,6 +203,7 @@ Navigate pages with `?page=N` query parameter.
   "profile": {
     "phone": "",
     "avatar": null,
+    "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
     "bio": ""
   }
 }
@@ -215,6 +234,7 @@ Update your username, email, first name, or last name. All fields are optional.
   "profile": {
     "phone": "",
     "avatar": null,
+    "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
     "bio": ""
   }
 }
@@ -227,6 +247,7 @@ Update your username, email, first name, or last name. All fields are optional.
 {
   "phone": "+1234567890",
   "avatar": "http://localhost:8000/media/avatars/photo.png",
+  "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
   "bio": "Hello world"
 }
 ```
@@ -255,6 +276,7 @@ avatar: <file>
 {
   "phone": "+1234567890",
   "avatar": "http://localhost:8000/media/avatars/photo.png",
+  "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
   "bio": "Software engineer"
 }
 ```
@@ -284,8 +306,17 @@ avatar: <file>
 |--------|------------------------|-------------|------------------------------|
 | GET    | `/auth/users/`         | Admin       | List all users (paginated)   |
 | POST   | `/auth/users/create/`  | Admin       | Create a new user account    |
+| GET    | `/auth/users/<username>/` | Admin    | Get a user by username       |
+| PATCH  | `/auth/users/<username>/` | Admin    | Update user fields/role      |
+| DELETE | `/auth/users/<username>/` | Admin    | Delete a user                |
+| POST   | `/auth/users/<username>/set-password/` | Admin | Set a user's password |
 
 #### GET `/auth/users/`
+
+Supports filtering and search:
+- Filter: `?role=student|instructor|admin`, `?is_active=true|false`
+- Search: `?search=john`
+- Ordering: `?ordering=username|email|date_joined` (prefix with `-` for desc)
 
 **Response (200):**
 ```json
@@ -300,7 +331,14 @@ avatar: <file>
       "email": "user@example.com",
       "first_name": "John",
       "last_name": "Doe",
-      "role": "student"
+      "role": "student",
+      "is_active": true,
+      "profile": {
+        "phone": "",
+        "avatar": null,
+        "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=johndoe",
+        "bio": ""
+      }
     }
   ]
 }
@@ -332,7 +370,14 @@ Admin can create accounts with any role.
   "email": "instructor@example.com",
   "first_name": "Jane",
   "last_name": "Doe",
-  "role": "instructor"
+  "role": "instructor",
+  "is_active": true,
+  "profile": {
+    "phone": "",
+    "avatar": null,
+    "default_avatar": "https://api.dicebear.com/9.x/avataaars/svg?seed=janedoe",
+    "bio": ""
+  }
 }
 ```
 
@@ -344,12 +389,13 @@ Admin can create accounts with any role.
 |--------|------------------------|--------------------|-------------------------------|
 | GET    | `/courses/`            | Any authenticated  | List all courses (paginated)  |
 | POST   | `/courses/`            | Admin              | Create a course               |
-| GET    | `/courses/<id>/`       | Any authenticated  | Get a course by ID            |
-| PUT    | `/courses/<id>/`       | Admin              | Full update a course          |
-| PATCH  | `/courses/<id>/`       | Admin              | Partial update a course       |
-| DELETE | `/courses/<id>/`       | Admin              | Delete a course               |
+| GET    | `/courses/<slug>/`     | Any authenticated  | Get a course by slug          |
+| PUT    | `/courses/<slug>/`     | Admin              | Full update a course          |
+| PATCH  | `/courses/<slug>/`     | Admin              | Partial update a course       |
+| DELETE | `/courses/<slug>/`     | Admin              | Delete a course               |
 
 > Course titles must be **unique**.
+> Course detail uses the course `slug` (read-only field).
 
 #### GET `/courses/`
 
@@ -363,7 +409,9 @@ Admin can create accounts with any role.
     {
       "id": 1,
       "title": "Django 101",
+      "slug": "django-101",
       "description": "Learn Django from scratch",
+      "logo": null,
       "created_at": "2026-02-08T17:00:00Z"
     }
   ]
@@ -385,7 +433,9 @@ Admin can create accounts with any role.
 {
   "id": 1,
   "title": "Django 101",
+  "slug": "django-101",
   "description": "Learn Django from scratch",
+  "logo": null,
   "created_at": "2026-02-08T17:00:00Z"
 }
 ```
@@ -426,6 +476,10 @@ Admin can create accounts with any role.
 | PATCH  | `/lessons/<id>/`       | Admin              | Partial update a lesson       |
 | DELETE | `/lessons/<id>/`       | Admin              | Delete a lesson               |
 
+Filtering is supported on list:
+- `?course=<course_id>`
+- `?user=<user_id>`
+
 #### GET `/lessons/`
 
 **Response (200):**
@@ -443,6 +497,7 @@ Admin can create accounts with any role.
       "user": 1,
       "video_provider": "youtube",
       "youtube_url": "https://youtu.be/example",
+      "homework": "",
       "created_at": "2026-02-08T17:00:00Z"
     }
   ]
@@ -473,6 +528,7 @@ Admin can create accounts with any role.
   "user": 1,
   "video_provider": "youtube",
   "youtube_url": "https://youtu.be/example",
+  "homework": "",
   "created_at": "2026-02-08T17:00:00Z"
 }
 ```

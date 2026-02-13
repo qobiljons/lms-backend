@@ -1,3 +1,4 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -12,6 +13,8 @@ from .serializers import LessonSerializer
 class LessonListAPIView(generics.ListCreateAPIView):
     serializer_class = LessonSerializer
     queryset = Lesson.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['course', 'user']
 
     def get_permissions(self):
         if self.request.method == "GET":
