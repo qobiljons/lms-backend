@@ -221,12 +221,31 @@ class DashboardStatsAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated, IsAdmin)
 
     def get(self, request):
+        from decimal import Decimal
+
         from django.contrib.auth import get_user_model
+        from django.db.models import Sum
+        from django.utils import timezone
+
         from apps.courses.models import Course
-        from apps.lessons.models import Lesson
         from apps.groups.models import Group
+        from apps.lessons.models import Lesson
+        from apps.payments.models import Payment, Subscription
 
         User = get_user_model()
+
+        now = timezone.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        total_revenue = (
+            Payment.objects.filter(status="succeeded").aggregate(total=Sum("amount"))["total"]
+            or Decimal("0.00")
+        )
+        monthly_revenue = (
+            Payment.objects.filter(status="succeeded", created_at__gte=month_start)
+            .aggregate(total=Sum("amount"))["total"]
+            or Decimal("0.00")
+        )
 
         return Response({
             "users": {
@@ -245,5 +264,10 @@ class DashboardStatsAPIView(APIView):
             },
             "groups": {
                 "total": Group.objects.count(),
+            },
+            "finance": {
+                "total_revenue": str(total_revenue),
+                "monthly_revenue": str(monthly_revenue),
+                "active_subscriptions": Subscription.objects.filter(status="active").count(),
             },
         })
