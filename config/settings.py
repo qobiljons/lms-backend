@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'apps.courses.apps.CoursesConfig',
     'apps.lessons.apps.LessonsConfig',
     'apps.groups.apps.GroupsConfig',
+    'apps.payments.apps.PaymentsConfig',
 ]
 
 MIDDLEWARE = [
@@ -152,3 +153,11 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+import os
+
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_51TAfGbCgenY4czBr67npbs4lGcGBPQodBJcj6c1atVBinss5RETXUIP8WVqWgbRzYMjbrol39mAWxZza9fHqlEF400aBSr9xBz')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_51TAfGbCgenY4czBrnTIbmSZvjYedKnKKtf5W9pNMdUiDjRY5fENDPvws0ftvqtJI5fMPWGDOIHJpGWjoIRqjoyPb00SMGpVrkW')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')

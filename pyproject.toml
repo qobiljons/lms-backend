@@ -9,4 +9,5 @@ dependencies = [
     "drf-yasg>=1.21",
     "djangorestframework-simplejwt>=5.4",
     "django-filter>=24.0",
+    "stripe>=14.4.1",
 ]
