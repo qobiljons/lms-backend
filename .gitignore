@@ -8,15 +8,14 @@ __pycache__/
 staticfiles/
 media/
 
-# uv
+# Virtual environment
 .venv/
 
 # Docker
 *.log
 
-# OS
+# OS / IDE
 .DS_Store
-*.idea
-.idea/misc.xml
-.idea/lms_backend.iml
+uv.lock
 auth.txt
+.idea/
