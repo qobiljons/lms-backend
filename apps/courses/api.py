@@ -18,7 +18,6 @@ class CoursePagination(PageNumberPagination):
 
 
 class CourseListAPIView(generics.ListCreateAPIView):
-    queryset = Course.objects.all()
     serializer_class = CourseSerializer
     pagination_class = CoursePagination
     filter_backends = (SearchFilter, OrderingFilter)
@@ -30,6 +29,14 @@ class CourseListAPIView(generics.ListCreateAPIView):
         if self.request.method == "GET":
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated(), IsAdmin()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "student":
+            if user.student_groups.exists():
+                return Course.objects.filter(groups__students=user).distinct()
+            return Course.objects.all()
+        return Course.objects.all()
 
 
 class CourseDetailAPIView(APIView):

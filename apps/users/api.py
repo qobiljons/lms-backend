@@ -224,6 +224,7 @@ class DashboardStatsAPIView(APIView):
         from django.contrib.auth import get_user_model
         from apps.courses.models import Course
         from apps.lessons.models import Lesson
+        from apps.groups.models import Group
 
         User = get_user_model()
 
@@ -241,5 +242,8 @@ class DashboardStatsAPIView(APIView):
             },
             "lessons": {
                 "total": Lesson.objects.count(),
+            },
+            "groups": {
+                "total": Group.objects.count(),
             },
         })

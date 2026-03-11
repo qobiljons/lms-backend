@@ -18,10 +18,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
+    groups = serializers.SerializerMethodField()
 
     class Meta:
         model = get_user_model()
-        fields = ("id", "username", "email", "first_name", "last_name", "role", "is_active", "profile")
+        fields = ("id", "username", "email", "first_name", "last_name", "role", "is_active", "profile", "groups")
+
+    def get_groups(self, obj):
+        from apps.groups.models import Group  # noqa: avoid circular import
+
+        if obj.role == "student":
+            qs = obj.student_groups.all()
+        elif obj.role == "instructor":
+            qs = obj.instructed_groups.all()
+        else:
+            return []
+        return [{"id": g.id, "name": g.name} for g in qs]
 
 
 class UpdateMeSerializer(serializers.ModelSerializer):

@@ -16,6 +16,7 @@ media/
 
 # OS
 .DS_Store
-.idea
-
+*.idea
+.idea/misc.xml
+.idea/lms_backend.iml
 auth.txt
