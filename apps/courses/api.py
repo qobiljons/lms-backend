@@ -14,7 +14,7 @@ from .serializers import CourseSerializer
 class CoursePagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = "page_size"
-    max_page_size = 50
+    max_page_size = 1000
 
 
 class CourseListAPIView(generics.ListCreateAPIView):
@@ -33,9 +33,11 @@ class CourseListAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == "student":
-            if user.student_groups.exists():
-                return Course.objects.filter(groups__students=user).distinct()
-            return Course.objects.all()
+            # Students ONLY see courses from their assigned groups
+            return Course.objects.filter(groups__students=user).distinct()
+        if user.role == "instructor":
+            # Instructors see courses from groups they instruct
+            return Course.objects.filter(groups__instructor=user).distinct()
         return Course.objects.all()
 
 
@@ -53,11 +55,19 @@ class CourseDetailAPIView(APIView):
         except Course.DoesNotExist:
             return None
 
+    def _check_student_access(self, user, course):
+        """Return True if student has group-based access to this course."""
+        if user.role != "student":
+            return True
+        return course.groups.filter(students=user).exists()
+
     @swagger_auto_schema(responses={200: CourseSerializer})
     def get(self, request, slug):
         course = self._get_course(slug)
         if course is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not self._check_student_access(request.user, course):
+            return Response({"detail": "You do not have access to this course."}, status=status.HTTP_403_FORBIDDEN)
         return Response(CourseSerializer(course).data)
 
     @swagger_auto_schema(request_body=CourseSerializer, responses={200: CourseSerializer})

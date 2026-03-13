@@ -12,7 +12,6 @@ from .serializers import LessonSerializer
 
 class LessonListAPIView(generics.ListCreateAPIView):
     serializer_class = LessonSerializer
-    queryset = Lesson.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['course', 'user']
 
@@ -20,6 +19,18 @@ class LessonListAPIView(generics.ListCreateAPIView):
         if self.request.method == "GET":
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated(), IsAdmin()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "student":
+            from apps.courses.models import Course
+            allowed_courses = Course.objects.filter(groups__students=user).distinct()
+            return Lesson.objects.filter(course__in=allowed_courses)
+        if user.role == "instructor":
+            from apps.courses.models import Course
+            allowed_courses = Course.objects.filter(groups__instructor=user).distinct()
+            return Lesson.objects.filter(course__in=allowed_courses)
+        return Lesson.objects.all()
 
 
 class LessonDetailAPIView(APIView):
@@ -36,11 +47,19 @@ class LessonDetailAPIView(APIView):
         except Lesson.DoesNotExist:
             return None
 
+    def _check_student_access(self, user, lesson):
+        """Return True if student has group-based access to this lesson's course."""
+        if user.role != "student":
+            return True
+        return lesson.course.groups.filter(students=user).exists()
+
     @swagger_auto_schema(responses={200: LessonSerializer})
     def get(self, request, lesson_id):
         lesson = self._get_lesson(lesson_id)
         if lesson is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not self._check_student_access(request.user, lesson):
+            return Response({"detail": "You do not have access to this lesson."}, status=status.HTTP_403_FORBIDDEN)
         return Response(LessonSerializer(lesson).data)
 
     @swagger_auto_schema(request_body=LessonSerializer, responses={200: LessonSerializer})

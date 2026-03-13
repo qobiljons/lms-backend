@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+from django.db import models
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -6,9 +8,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdmin
+from apps.users.serializers import UserSerializer
 
 from .models import Group
 from .serializers import GroupDetailSerializer, GroupListSerializer
+
+User = get_user_model()
 
 
 class GroupPagination(PageNumberPagination):
@@ -64,3 +69,57 @@ class GroupDetailAPIView(APIView):
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
         group.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MyGroupsAPIView(APIView):
+    """Return the groups the current user belongs to, with full member details."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        if user.role == "student":
+            groups = user.student_groups.all()
+        elif user.role == "instructor":
+            groups = user.instructed_groups.all()
+        else:
+            groups = Group.objects.all()
+        return Response(GroupDetailSerializer(groups, many=True).data)
+
+
+class GroupMemberProfileAPIView(APIView):
+    """View another user's profile — only if they share a group with you."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, username):
+        try:
+            target = User.objects.select_related("profile").get(username=username)
+        except User.DoesNotExist:
+            return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        # Admins can view anyone
+        if user.role == "admin":
+            return Response(UserSerializer(target).data)
+
+        # Students/instructors can only view members who share a group
+        if user.role == "student":
+            my_group_ids = user.student_groups.values_list("id", flat=True)
+        elif user.role == "instructor":
+            my_group_ids = user.instructed_groups.values_list("id", flat=True)
+        else:
+            my_group_ids = Group.objects.none().values_list("id", flat=True)
+
+        # Check if target is in any of user's groups (as student or instructor)
+        shares_group = Group.objects.filter(
+            pk__in=my_group_ids,
+        ).filter(
+            models.Q(students=target) | models.Q(instructor=target)
+        ).exists()
+
+        if not shares_group:
+            return Response(
+                {"detail": "You can only view profiles of members in your groups."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(UserSerializer(target).data)
