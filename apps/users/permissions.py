@@ -6,3 +6,12 @@ class IsAdmin(BasePermission):
 
     def has_permission(self, request, view):
         return request.user and request.user.role == "admin"
+
+
+
+class IsInstructor(BasePermission):
+
+    """Allow access only to users with the Instructor  role."""
+
+    def has_permission(self, request, view):
+        return request.user and request.user.role == "instructor"
