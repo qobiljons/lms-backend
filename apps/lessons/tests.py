@@ -4,6 +4,8 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.courses.models import Course
+from apps.groups.models import Group
+from apps.payments.models import CoursePurchase
 from .models import Lesson
 
 
@@ -46,6 +48,11 @@ class LessonAPITests(TestCase):
         self.student = User.objects.create_user(
             email="student@test.com", username="student", password="pass12345"
         )
+        self.instructor = User.objects.create_user(
+            email="instructor@test.com", username="instructor", password="pass12345"
+        )
+        self.instructor.role = "instructor"
+        self.instructor.save()
 
         self.course = Course.objects.create(title="Course 1", description="Desc")
 
@@ -118,20 +125,119 @@ class LessonAPITests(TestCase):
 
     # --- Student read-only ---
     def test_student_can_list_lessons(self):
-        Lesson.objects.create(
+        lesson = Lesson.objects.create(
             title="L1", content="c", course=self.course, user=self.admin
         )
+        group = Group.objects.create(name="Lesson Group")
+        group.students.add(self.student)
+        group.courses.add(self.course)
         self._auth(self.student)
         res = self.client.get("/lessons/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)
+        self.assertEqual(res.data["results"][0]["id"], lesson.id)
 
     def test_student_can_get_lesson(self):
         lesson = Lesson.objects.create(
             title="L1", content="c", course=self.course, user=self.admin
         )
+        group = Group.objects.create(name="Lesson Group 2")
+        group.students.add(self.student)
+        group.courses.add(self.course)
         self._auth(self.student)
         res = self.client.get(f"/lessons/{lesson.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_student_cannot_get_unassigned_lesson(self):
+        lesson = Lesson.objects.create(
+            title="L1", content="c", course=self.course, user=self.admin
+        )
+        self._auth(self.student)
+        res = self.client.get(f"/lessons/{lesson.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.data["detail"], "This course is not assigned to your group.")
+
+    def test_student_can_get_paid_lesson_after_purchase(self):
+        paid_course = Course.objects.create(title="Paid Course", description="Desc", price=99)
+        lesson = Lesson.objects.create(
+            title="Paid L1", content="c", course=paid_course, user=self.admin
+        )
+        group = Group.objects.create(name="Lesson Group 3")
+        group.students.add(self.student)
+        group.courses.add(paid_course)
+        self._auth(self.student)
+
+        before = self.client.get(f"/lessons/{lesson.id}/")
+        self.assertEqual(before.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(before.data["detail"], "Please make a purchase to see the course content.")
+
+        CoursePurchase.objects.create(user=self.student, course=paid_course, amount=paid_course.price)
+        after = self.client.get(f"/lessons/{lesson.id}/")
+        self.assertEqual(after.status_code, status.HTTP_200_OK)
+
+    def test_student_cannot_list_paid_lessons_without_purchase(self):
+        paid_course = Course.objects.create(title="Paid Course 2", description="Desc", price=99)
+        Lesson.objects.create(
+            title="Paid L2", content="c", course=paid_course, user=self.admin
+        )
+        group = Group.objects.create(name="Lesson Group 4")
+        group.students.add(self.student)
+        group.courses.add(paid_course)
+        self._auth(self.student)
+        res = self.client.get("/lessons/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 0)
+
+    def test_instructor_can_list_only_assigned_lessons(self):
+        assigned_course = Course.objects.create(title="Instructor Lesson Course 1", description="d")
+        other_course = Course.objects.create(title="Instructor Lesson Course 2", description="d")
+        assigned_lesson = Lesson.objects.create(
+            title="Assigned Lesson", content="c", course=assigned_course, user=self.admin
+        )
+        Lesson.objects.create(
+            title="Other Lesson", content="c", course=other_course, user=self.admin
+        )
+        group = Group.objects.create(name="Instructor Lesson Group 1", instructor=self.instructor)
+        group.courses.add(assigned_course)
+        self._auth(self.instructor)
+        res = self.client.get("/lessons/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)
+        self.assertEqual(res.data["results"][0]["id"], assigned_lesson.id)
+
+    def test_instructor_cannot_get_unassigned_lesson(self):
+        lesson = Lesson.objects.create(
+            title="Instructor Hidden Lesson", content="c", course=self.course, user=self.admin
+        )
+        self._auth(self.instructor)
+        res = self.client.get(f"/lessons/{lesson.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.data["detail"], "This course is not assigned to you.")
+
+    def test_instructor_can_create_lesson_for_assigned_course(self):
+        group = Group.objects.create(name="Instructor Lesson Group 2", instructor=self.instructor)
+        group.courses.add(self.course)
+        self._auth(self.instructor)
+        res = self.client.post("/lessons/", {
+            "title": "Instructor Created Lesson",
+            "content": "Content",
+            "course": self.course.id,
+            "user": self.admin.id,
+        })
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["title"], "Instructor Created Lesson")
+        self.assertEqual(res.data["user"], self.instructor.id)
+
+    def test_instructor_cannot_create_lesson_for_unassigned_course(self):
+        self._auth(self.instructor)
+        res = self.client.post("/lessons/", {
+            "title": "Blocked Lesson",
+            "content": "Content",
+            "course": self.course.id,
+            "user": self.admin.id,
+        })
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.data["detail"], "This course is not assigned to you.")
 
     def test_student_cannot_create_lesson(self):
         self._auth(self.student)

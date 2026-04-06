@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserProfile
 
@@ -438,6 +439,10 @@ class DashboardStatsAPITests(TestCase):
 
         self.client = APIClient()
 
+    def _auth_jwt(self, user):
+        token = str(RefreshToken.for_user(user).access_token)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
     def test_admin_get_stats(self):
         from apps.courses.models import Course
         from apps.lessons.models import Lesson
@@ -454,11 +459,25 @@ class DashboardStatsAPITests(TestCase):
         self.assertEqual(res.data["users"]["students"], 1)
         self.assertEqual(res.data["courses"]["total"], 2)
         self.assertEqual(res.data["lessons"]["total"], 1)
+        self.assertEqual(res.data["finance"]["active_subscriptions"], 0)
 
     def test_student_cannot_get_stats(self):
         self.client.force_authenticate(user=self.student)
         res = self.client.get("/auth/dashboard/stats/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("detail", res.data)
+
+    def test_admin_jwt_get_stats(self):
+        self._auth_jwt(self.admin)
+        res = self.client.get("/auth/dashboard/stats/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["finance"]["active_subscriptions"], 0)
+
+    def test_student_jwt_cannot_get_stats(self):
+        self._auth_jwt(self.student)
+        res = self.client.get("/auth/dashboard/stats/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("detail", res.data)
 
     def test_unauthenticated_cannot_get_stats(self):
         res = self.client.get("/auth/dashboard/stats/")
