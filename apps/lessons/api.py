@@ -4,6 +4,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.courses.access import get_course_access_denial_message
 from apps.users.permissions import IsAdmin
 
 from .models import Lesson
@@ -11,19 +12,7 @@ from .serializers import LessonSerializer
 
 
 def has_course_access(user, course):
-    """Check if a user can access a course's content (lessons)."""
-    if user.role in ("admin", "instructor"):
-        return True
-    if course.price == 0:
-        return True
-    # VIP subscription
-    from apps.payments.models import CoursePurchase, Subscription
-    if Subscription.objects.filter(user=user, status="active", plan__is_vip=True).exists():
-        return True
-    # Individual purchase
-    if CoursePurchase.objects.filter(user=user, course=course).exists():
-        return True
-    return False
+    return get_course_access_denial_message(user, course) is None
 
 
 class LessonListAPIView(generics.ListCreateAPIView):
@@ -34,30 +23,49 @@ class LessonListAPIView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.IsAuthenticated()]
-        return [permissions.IsAuthenticated(), IsAdmin()]
+        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
         if user.role == "student":
-            from apps.courses.models import Course
-            # Students can access lessons from free courses, purchased courses, or if VIP
-            from apps.payments.models import CoursePurchase, Subscription
-            has_vip = Subscription.objects.filter(
-                user=user, status="active", plan__is_vip=True
-            ).exists()
-            if has_vip:
-                return Lesson.objects.all()
-            # Free courses + purchased courses (use Q to avoid union subquery issue)
             from django.db.models import Q
-            allowed_courses = Course.objects.filter(
-                Q(price=0) | Q(purchases__user=user)
+            return Lesson.objects.filter(
+                course__groups__students=user
+            ).filter(
+                Q(course__price=0) | Q(course__purchases__user=user)
             ).distinct()
-            return Lesson.objects.filter(course__in=allowed_courses)
         if user.role == "instructor":
             from apps.courses.models import Course
             allowed_courses = Course.objects.filter(groups__instructor=user).distinct()
             return Lesson.objects.filter(course__in=allowed_courses)
         return Lesson.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        if request.user.role not in ("admin", "instructor"):
+            return Response(
+                {"detail": "You do not have permission to perform this action."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        data = request.data.copy()
+        if request.user.role == "instructor":
+            from apps.courses.models import Course
+            course_id = data.get("course")
+            if not course_id:
+                return Response(
+                    {"course": ["This field is required."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not Course.objects.filter(pk=course_id, groups__instructor=request.user).exists():
+                return Response(
+                    {"detail": "This course is not assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            data["user"] = request.user.id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class LessonDetailAPIView(APIView):
@@ -83,8 +91,9 @@ class LessonDetailAPIView(APIView):
         lesson = self._get_lesson(lesson_id)
         if lesson is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
-        if not self._check_access(request.user, lesson):
-            return Response({"detail": "You do not have access to this lesson."}, status=status.HTTP_403_FORBIDDEN)
+        denial_message = get_course_access_denial_message(request.user, lesson.course)
+        if denial_message:
+            return Response({"detail": denial_message}, status=status.HTTP_403_FORBIDDEN)
         return Response(LessonSerializer(lesson).data)
 
     @swagger_auto_schema(request_body=LessonSerializer, responses={200: LessonSerializer})
