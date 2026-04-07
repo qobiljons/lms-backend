@@ -228,6 +228,7 @@ class DashboardStatsAPIView(APIView):
         from django.utils import timezone
 
         from apps.courses.models import Course
+        from apps.attendance.models import AttendanceSession, AttendanceRecord
         from apps.groups.models import Group
         from apps.lessons.models import Lesson
         from apps.payments.models import Payment, Subscription
@@ -264,6 +265,10 @@ class DashboardStatsAPIView(APIView):
             },
             "groups": {
                 "total": Group.objects.count(),
+            },
+            "attendance": {
+                "sessions": AttendanceSession.objects.count(),
+                "records": AttendanceRecord.objects.count(),
             },
             "finance": {
                 "total_revenue": str(total_revenue),

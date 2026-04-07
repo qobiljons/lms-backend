@@ -38,7 +38,7 @@ class GroupListAPIView(generics.ListCreateAPIView):
 
 
 class GroupDetailAPIView(APIView):
-    permission_classes = (permissions.IsAuthenticated, IsAdmin)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def _get_group(self, group_id):
         try:
@@ -46,15 +46,40 @@ class GroupDetailAPIView(APIView):
         except Group.DoesNotExist:
             return None
 
+    def _can_access_group(self, user, group):
+        """Check if user can access this group"""
+        if user.role == "admin":
+            return True
+        if user.role == "instructor" and group.instructor_id == user.id:
+            return True
+        if user.role == "student" and group.students.filter(id=user.id).exists():
+            return True
+        return False
+
     @swagger_auto_schema(responses={200: GroupDetailSerializer})
     def get(self, request, group_id):
         group = self._get_group(group_id)
         if group is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check access permission
+        if not self._can_access_group(request.user, group):
+            return Response(
+                {"detail": "You do not have permission to view this group."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         return Response(GroupDetailSerializer(group).data)
 
     @swagger_auto_schema(request_body=GroupDetailSerializer, responses={200: GroupDetailSerializer})
     def patch(self, request, group_id):
+        # Only admins can update groups
+        if request.user.role != "admin":
+            return Response(
+                {"detail": "Only admins can update groups."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         group = self._get_group(group_id)
         if group is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -64,6 +89,13 @@ class GroupDetailAPIView(APIView):
         return Response(GroupDetailSerializer(group).data)
 
     def delete(self, request, group_id):
+        # Only admins can delete groups
+        if request.user.role != "admin":
+            return Response(
+                {"detail": "Only admins can delete groups."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         group = self._get_group(group_id)
         if group is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
