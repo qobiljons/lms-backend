@@ -67,7 +67,7 @@ class LessonAPITests(TestCase):
     def _auth(self, user):
         self.client.force_authenticate(user=user)
 
-    # --- Admin CRUD ---
+                        
     def test_admin_create_lesson(self):
         self._auth(self.admin)
         res = self.client.post("/lessons/", self.lesson_data)
@@ -123,7 +123,7 @@ class LessonAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Lesson.objects.filter(id=lesson.id).exists())
 
-    # --- Student read-only ---
+                               
     def test_student_can_list_lessons(self):
         lesson = Lesson.objects.create(
             title="L1", content="c", course=self.course, user=self.admin
@@ -263,12 +263,12 @@ class LessonAPITests(TestCase):
         res = self.client.delete(f"/lessons/{lesson.id}/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    # --- Unauthenticated ---
+                             
     def test_unauthenticated_cannot_access(self):
         res = self.client.get("/lessons/")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # --- 404 ---
+                 
     def test_get_nonexistent_lesson(self):
         self._auth(self.admin)
         res = self.client.get("/lessons/9999/")

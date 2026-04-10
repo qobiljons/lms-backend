@@ -1,4 +1,4 @@
-# Manual migration to convert lessons.course_id into a proper FK without a default.
+                                                                                   
 
 import django.db.models.deletion
 from django.db import migrations, models

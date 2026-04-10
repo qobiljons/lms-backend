@@ -15,5 +15,6 @@ urlpatterns = [
     path("me/change-password/", api.ChangePasswordAPIView.as_view(), name="change_password"),
     path("logout/", api.LogoutAPIView.as_view(), name="logout"),
     path("dashboard/stats/", api.DashboardStatsAPIView.as_view(), name="dashboard_stats"),
+    path("export/excel/", api.ExportExcelAPIView.as_view(), name="export_excel"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]

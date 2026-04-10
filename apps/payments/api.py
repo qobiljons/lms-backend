@@ -29,7 +29,7 @@ class PaymentPagination(PageNumberPagination):
     max_page_size = 50
 
 
-# ─── Admin Endpoints ───────────────────────────────────────────────
+                                                                     
 
 
 class AdminCoursePurchasesAPIView(generics.ListAPIView):
@@ -92,7 +92,7 @@ class RevenueStatsAPIView(APIView):
         })
 
 
-# ─── Student Course Purchase Endpoints ────────────────────────────
+                                                                    
 
 
 class CoursePurchaseCheckoutAPIView(APIView):
@@ -112,11 +112,11 @@ class CoursePurchaseCheckoutAPIView(APIView):
         if float(course.price) == 0:
             return Response({"detail": "This course is free — no payment needed."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Already purchased?
+                            
         if CoursePurchase.objects.filter(user=request.user, course=course).exists():
             return Response({"detail": "You already own this course."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ── Demo / no Stripe key mode ──
+                                         
         if not getattr(settings, "STRIPE_SECRET_KEY", None):
             payment = Payment.objects.create(
                 user=request.user,
@@ -136,7 +136,7 @@ class CoursePurchaseCheckoutAPIView(APIView):
                 "purchase": CoursePurchaseSerializer(purchase).data,
             })
 
-        # ── Live Stripe one-time checkout ──
+                                             
         try:
             stripe.api_key = settings.STRIPE_SECRET_KEY
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
@@ -250,7 +250,7 @@ class MyPaymentsAPIView(generics.ListAPIView):
         return Payment.objects.filter(user=self.request.user).order_by("-created_at")
 
 
-# ─── Stripe Webhook ────────────────────────────────────────────────
+                                                                     
 
 
 class StripeWebhookAPIView(APIView):

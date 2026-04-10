@@ -17,13 +17,13 @@ class CourseSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-        # Admin / instructor always have access
+                                               
         if user.role in ("admin", "instructor"):
             return True
-        # Free courses are accessible to all
+                                            
         if obj.price == 0:
             return True
-        # Individual purchase grants access
+                                           
         from apps.payments.models import CoursePurchase
         return CoursePurchase.objects.filter(user=user, course=obj).exists()
 

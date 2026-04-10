@@ -17,7 +17,7 @@ class UserProfileSignalTests(TestCase):
         )
 
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
-        # Ensure the related_name works as expected.
+                                                    
         self.assertEqual(user.profile.user_id, user.id)
 
 
@@ -345,7 +345,7 @@ class ProfileAPITests(TestCase):
     def test_avatar_replace(self):
         from io import BytesIO
         from PIL import Image
-        # Upload first
+                      
         img1 = Image.new("RGB", (50, 50), color="red")
         buf1 = BytesIO()
         img1.save(buf1, format="PNG")
@@ -353,7 +353,7 @@ class ProfileAPITests(TestCase):
         buf1.name = "first.png"
         res1 = self.client.patch("/auth/me/profile/", {"avatar": buf1}, format="multipart")
         first_url = res1.data["avatar"]
-        # Upload second
+                       
         img2 = Image.new("RGB", (50, 50), color="green")
         buf2 = BytesIO()
         img2.save(buf2, format="PNG")
@@ -459,25 +459,27 @@ class DashboardStatsAPITests(TestCase):
         self.assertEqual(res.data["users"]["students"], 1)
         self.assertEqual(res.data["courses"]["total"], 2)
         self.assertEqual(res.data["lessons"]["total"], 1)
-        self.assertEqual(res.data["finance"]["active_subscriptions"], 0)
+        self.assertEqual(res.data["finance"]["total_payments"], 0)
 
-    def test_student_cannot_get_stats(self):
+    def test_student_get_stats(self):
         self.client.force_authenticate(user=self.student)
         res = self.client.get("/auth/dashboard/stats/")
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("detail", res.data)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("courses", res.data)
+        self.assertIn("attendance", res.data)
 
     def test_admin_jwt_get_stats(self):
         self._auth_jwt(self.admin)
         res = self.client.get("/auth/dashboard/stats/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data["finance"]["active_subscriptions"], 0)
+        self.assertEqual(res.data["finance"]["total_payments"], 0)
 
-    def test_student_jwt_cannot_get_stats(self):
+    def test_student_jwt_get_stats(self):
         self._auth_jwt(self.student)
         res = self.client.get("/auth/dashboard/stats/")
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("detail", res.data)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("courses", res.data)
+        self.assertIn("attendance", res.data)
 
     def test_unauthenticated_cannot_get_stats(self):
         res = self.client.get("/auth/dashboard/stats/")

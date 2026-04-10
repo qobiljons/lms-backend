@@ -6,5 +6,5 @@ class UsersConfig(AppConfig):
     name = "apps.users"
 
     def ready(self) -> None:
-        # Import signals so Django registers them at startup.
-        from . import signals  # noqa: F401
+                                                             
+        from . import signals              

@@ -52,7 +52,7 @@ class CourseAPITests(TestCase):
         token = str(RefreshToken.for_user(user).access_token)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
-    # --- Admin CRUD ---
+                        
     def test_admin_create_course(self):
         self._auth(self.admin)
         res = self.client.post("/courses/", self.course_data)
@@ -95,7 +95,7 @@ class CourseAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Course.objects.filter(id=course.id).exists())
 
-    # --- Student read-only ---
+                               
     def test_student_can_list_courses(self):
         assigned = Course.objects.create(title="C1", description="d")
         Course.objects.create(title="C2", description="d")
@@ -210,12 +210,12 @@ class CourseAPITests(TestCase):
         res = self.client.delete(f"/courses/{course.slug}/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    # --- Unauthenticated ---
+                             
     def test_unauthenticated_cannot_access(self):
         res = self.client.get("/courses/")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # --- 404 ---
+                 
     def test_get_nonexistent_course(self):
         self._auth(self.admin)
         res = self.client.get("/courses/9999/")

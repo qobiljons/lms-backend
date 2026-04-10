@@ -25,7 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ("id", "username", "email", "first_name", "last_name", "role", "is_active", "profile", "groups")
 
     def get_groups(self, obj):
-        from apps.groups.models import Group  # noqa: avoid circular import
+        from apps.groups.models import Group                               
 
         if obj.role == "student":
             qs = obj.student_groups.all()

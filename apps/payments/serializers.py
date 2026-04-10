@@ -66,4 +66,4 @@ class CoursePurchaseSerializer(serializers.ModelSerializer):
     def get_payment_status(self, obj):
         if obj.payment:
             return obj.payment.status
-        return "succeeded"  # demo purchases have no payment record issue
+        return "succeeded"                                               

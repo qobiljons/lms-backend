@@ -62,7 +62,7 @@ class GroupDetailAPIView(APIView):
         if group is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check access permission
+                                 
         if not self._can_access_group(request.user, group):
             return Response(
                 {"detail": "You do not have permission to view this group."},
@@ -73,7 +73,7 @@ class GroupDetailAPIView(APIView):
 
     @swagger_auto_schema(request_body=GroupDetailSerializer, responses={200: GroupDetailSerializer})
     def patch(self, request, group_id):
-        # Only admins can update groups
+                                       
         if request.user.role != "admin":
             return Response(
                 {"detail": "Only admins can update groups."},
@@ -89,7 +89,7 @@ class GroupDetailAPIView(APIView):
         return Response(GroupDetailSerializer(group).data)
 
     def delete(self, request, group_id):
-        # Only admins can delete groups
+                                       
         if request.user.role != "admin":
             return Response(
                 {"detail": "Only admins can delete groups."},
@@ -129,11 +129,11 @@ class GroupMemberProfileAPIView(APIView):
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
-        # Admins can view anyone
+                                
         if user.role == "admin":
             return Response(UserSerializer(target).data)
 
-        # Students/instructors can only view members who share a group
+                                                                      
         if user.role == "student":
             my_group_ids = user.student_groups.values_list("id", flat=True)
         elif user.role == "instructor":
@@ -141,7 +141,7 @@ class GroupMemberProfileAPIView(APIView):
         else:
             my_group_ids = Group.objects.none().values_list("id", flat=True)
 
-        # Check if target is in any of user's groups (as student or instructor)
+                                                                               
         shares_group = Group.objects.filter(
             pk__in=my_group_ids,
         ).filter(
