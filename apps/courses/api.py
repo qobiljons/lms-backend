@@ -11,12 +11,10 @@ from .access import get_course_access_denial_message
 from .models import Course
 from .serializers import CourseSerializer
 
-
 class CoursePagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = "page_size"
     max_page_size = 1000
-
 
 class CourseListAPIView(generics.ListCreateAPIView):
     serializer_class = CourseSerializer
@@ -51,7 +49,6 @@ class CourseListAPIView(generics.ListCreateAPIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         return super().create(request, *args, **kwargs)
-
 
 class CourseDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)

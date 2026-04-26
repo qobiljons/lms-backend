@@ -6,12 +6,10 @@ from .models import AttendanceRecord, AttendanceSession
 
 User = get_user_model()
 
-
 class AttendanceStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "username", "first_name", "last_name")
-
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
     student_detail = AttendanceStudentSerializer(source="student", read_only=True)
@@ -21,12 +19,10 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         fields = ("id", "student", "student_detail", "status", "note", "marked_at")
         read_only_fields = ("id", "marked_at")
 
-
 class AttendanceRecordWriteSerializer(serializers.Serializer):
     student = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role="student"))
     status = serializers.ChoiceField(choices=AttendanceRecord.Status.choices)
     note = serializers.CharField(required=False, allow_blank=True, max_length=255)
-
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(source="group.name", read_only=True)
@@ -74,7 +70,6 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
             "attendance_percentage": percentage,
             "status_breakdown": counters,
         }
-
 
 class AttendanceSessionWriteSerializer(serializers.ModelSerializer):
     records = AttendanceRecordWriteSerializer(many=True, required=False)

@@ -8,7 +8,6 @@ from apps.groups.models import Group
 from apps.payments.models import CoursePurchase
 from .models import Lesson
 
-
 class LessonModelTests(TestCase):
     def test_create_lesson(self) -> None:
         user_model = get_user_model()
@@ -34,7 +33,6 @@ class LessonModelTests(TestCase):
         self.assertEqual(lesson.user_id, user.id)
         self.assertEqual(lesson.course_id, course.id)
         self.assertEqual(lesson.title, "Intro")
-
 
 class LessonAPITests(TestCase):
     def setUp(self):
@@ -67,7 +65,6 @@ class LessonAPITests(TestCase):
     def _auth(self, user):
         self.client.force_authenticate(user=user)
 
-                        
     def test_admin_create_lesson(self):
         self._auth(self.admin)
         res = self.client.post("/lessons/", self.lesson_data)
@@ -123,7 +120,6 @@ class LessonAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Lesson.objects.filter(id=lesson.id).exists())
 
-                               
     def test_student_can_list_lessons(self):
         lesson = Lesson.objects.create(
             title="L1", content="c", course=self.course, user=self.admin
@@ -263,12 +259,10 @@ class LessonAPITests(TestCase):
         res = self.client.delete(f"/lessons/{lesson.id}/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-                             
     def test_unauthenticated_cannot_access(self):
         res = self.client.get("/lessons/")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-                 
     def test_get_nonexistent_lesson(self):
         self._auth(self.admin)
         res = self.client.get("/lessons/9999/")

@@ -22,15 +22,10 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
-
 class PaymentPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 50
-
-
-                                                                     
-
 
 class AdminCoursePurchasesAPIView(generics.ListAPIView):
     """Admin: view all course purchases with student details."""
@@ -44,7 +39,6 @@ class AdminCoursePurchasesAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         return CoursePurchase.objects.select_related("user", "course", "payment").all()
-
 
 class AdminTransactionsAPIView(generics.ListAPIView):
     """Admin: view all payment records."""
@@ -62,7 +56,6 @@ class AdminTransactionsAPIView(generics.ListAPIView):
         if status_filter:
             qs = qs.filter(status=status_filter)
         return qs
-
 
 class RevenueStatsAPIView(APIView):
     """Admin: revenue statistics."""
@@ -91,10 +84,6 @@ class RevenueStatsAPIView(APIView):
             "total_course_purchases": total_course_purchases,
         })
 
-
-                                                                    
-
-
 class CoursePurchaseCheckoutAPIView(APIView):
     """Student: initiate payment for a course."""
     permission_classes = (permissions.IsAuthenticated,)
@@ -112,11 +101,9 @@ class CoursePurchaseCheckoutAPIView(APIView):
         if float(course.price) == 0:
             return Response({"detail": "This course is free — no payment needed."}, status=status.HTTP_400_BAD_REQUEST)
 
-                            
         if CoursePurchase.objects.filter(user=request.user, course=course).exists():
             return Response({"detail": "You already own this course."}, status=status.HTTP_400_BAD_REQUEST)
 
-                                         
         if not getattr(settings, "STRIPE_SECRET_KEY", None):
             payment = Payment.objects.create(
                 user=request.user,
@@ -136,7 +123,6 @@ class CoursePurchaseCheckoutAPIView(APIView):
                 "purchase": CoursePurchaseSerializer(purchase).data,
             })
 
-                                             
         try:
             stripe.api_key = settings.STRIPE_SECRET_KEY
             frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
@@ -180,7 +166,6 @@ class CoursePurchaseCheckoutAPIView(APIView):
                 {"detail": "Failed to create checkout session."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
 
 class CoursePurchaseSuccessAPIView(APIView):
     """Student: verify Stripe payment and unlock course."""
@@ -230,7 +215,6 @@ class CoursePurchaseSuccessAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
 class MyCoursePurchasesAPIView(generics.ListAPIView):
     """Student: list my purchased courses."""
     serializer_class = CoursePurchaseSerializer
@@ -238,7 +222,6 @@ class MyCoursePurchasesAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         return CoursePurchase.objects.filter(user=self.request.user).select_related("course", "payment")
-
 
 class MyPaymentsAPIView(generics.ListAPIView):
     """Student: list my payment history."""
@@ -248,10 +231,6 @@ class MyPaymentsAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         return Payment.objects.filter(user=self.request.user).order_by("-created_at")
-
-
-                                                                     
-
 
 class StripeWebhookAPIView(APIView):
     """Handle Stripe events for course purchases."""

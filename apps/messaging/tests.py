@@ -8,7 +8,6 @@ from apps.groups.models import Group
 
 from .models import DirectConversation, GroupConversation
 
-
 class MessagingAPITests(TestCase):
     def setUp(self):
         User = get_user_model()

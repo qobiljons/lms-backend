@@ -6,7 +6,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserProfile
 
-
 class UserProfileSignalTests(TestCase):
     def test_profile_created_on_user_creation(self) -> None:
         user_model = get_user_model()
@@ -17,9 +16,8 @@ class UserProfileSignalTests(TestCase):
         )
 
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
-                                                    
-        self.assertEqual(user.profile.user_id, user.id)
 
+        self.assertEqual(user.profile.user_id, user.id)
 
 class AdminCreateUserAPITests(TestCase):
     def setUp(self):
@@ -228,7 +226,6 @@ class AdminCreateUserAPITests(TestCase):
         })
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-
 class MeAPITests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -277,7 +274,6 @@ class MeAPITests(TestCase):
         self.client.force_authenticate(user=None)
         res = self.client.get("/auth/me/")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-
 
 class ProfileAPITests(TestCase):
     def setUp(self):
@@ -345,7 +341,7 @@ class ProfileAPITests(TestCase):
     def test_avatar_replace(self):
         from io import BytesIO
         from PIL import Image
-                      
+
         img1 = Image.new("RGB", (50, 50), color="red")
         buf1 = BytesIO()
         img1.save(buf1, format="PNG")
@@ -353,7 +349,7 @@ class ProfileAPITests(TestCase):
         buf1.name = "first.png"
         res1 = self.client.patch("/auth/me/profile/", {"avatar": buf1}, format="multipart")
         first_url = res1.data["avatar"]
-                       
+
         img2 = Image.new("RGB", (50, 50), color="green")
         buf2 = BytesIO()
         img2.save(buf2, format="PNG")
@@ -381,7 +377,6 @@ class ProfileAPITests(TestCase):
         self.client.force_authenticate(user=None)
         res = self.client.get("/auth/me/profile/")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-
 
 class ChangePasswordAPITests(TestCase):
     def setUp(self):
@@ -422,7 +417,6 @@ class ChangePasswordAPITests(TestCase):
             "new_password": "newpass123",
         })
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-
 
 class DashboardStatsAPITests(TestCase):
     def setUp(self):

@@ -13,23 +13,24 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
-                                                                
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-                                                              
-                                                                       
-
+_env_path = BASE_DIR / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _key, _val = _line.split("=", 1)
+        _key = _key.strip()
+        _val = _val.strip().strip('"').strip("'")
+        os.environ.setdefault(_key, _val)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xhv7vv))4h4mh2ggho4ma3+u6!o&7&-tlr1&j)!deiubr@xegs')
-
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
-
-
-                        
 
 INSTALLED_APPS = [
     'daphne',
@@ -87,10 +88,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-
-          
-                                                               
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -101,10 +98,6 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
-
-
-                     
-                                                                              
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -121,10 +114,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-                      
-                                                    
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -132,10 +121,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
-
-                                        
-                                                           
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -179,13 +164,13 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_51TAfGbCgenY4cz
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_51TAfGbCgenY4czBrnTIbmSZvjYedKnKKtf5W9pNMdUiDjRY5fENDPvws0ftvqtJI5fMPWGDOIHJpGWjoIRqjoyPb00SMGpVrkW')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
 ]
 
-# Add production frontend URL if set
 if FRONTEND_URL and FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
 

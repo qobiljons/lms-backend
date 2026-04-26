@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from .models import Course
 
-
 class CourseSerializer(serializers.ModelSerializer):
     is_accessible = serializers.SerializerMethodField()
     is_purchased = serializers.SerializerMethodField()
@@ -17,13 +16,13 @@ class CourseSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-                                               
+
         if user.role in ("admin", "instructor"):
             return True
-                                            
+
         if obj.price == 0:
             return True
-                                           
+
         from apps.payments.models import CoursePurchase
         return CoursePurchase.objects.filter(user=user, course=obj).exists()
 

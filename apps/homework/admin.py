@@ -2,12 +2,10 @@ from django.contrib import admin
 
 from .models import Homework, HomeworkFile, HomeworkSubmission
 
-
 class HomeworkFileInline(admin.TabularInline):
     model = HomeworkFile
     extra = 0
     readonly_fields = ("filename", "file_type", "file_size", "uploaded_at")
-
 
 @admin.register(Homework)
 class HomeworkAdmin(admin.ModelAdmin):
@@ -16,7 +14,6 @@ class HomeworkAdmin(admin.ModelAdmin):
     list_filter = ("lesson__course", "created_at", "due_date")
     ordering = ("-created_at",)
     autocomplete_fields = ("lesson", "created_by")
-
 
 @admin.register(HomeworkSubmission)
 class HomeworkSubmissionAdmin(admin.ModelAdmin):
@@ -35,7 +32,6 @@ class HomeworkSubmissionAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
     autocomplete_fields = ("homework", "student", "graded_by")
     inlines = [HomeworkFileInline]
-
 
 @admin.register(HomeworkFile)
 class HomeworkFileAdmin(admin.ModelAdmin):

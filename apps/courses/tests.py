@@ -9,7 +9,6 @@ from apps.payments.models import CoursePurchase
 
 from .models import Course
 
-
 class CourseModelTests(TestCase):
     def test_create_course(self) -> None:
         course = Course.objects.create(
@@ -22,7 +21,6 @@ class CourseModelTests(TestCase):
         Course.objects.create(title="Unique", description="First")
         with self.assertRaises(Exception):
             Course.objects.create(title="Unique", description="Second")
-
 
 class CourseAPITests(TestCase):
     def setUp(self):
@@ -52,7 +50,6 @@ class CourseAPITests(TestCase):
         token = str(RefreshToken.for_user(user).access_token)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
-                        
     def test_admin_create_course(self):
         self._auth(self.admin)
         res = self.client.post("/courses/", self.course_data)
@@ -95,7 +92,6 @@ class CourseAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Course.objects.filter(id=course.id).exists())
 
-                               
     def test_student_can_list_courses(self):
         assigned = Course.objects.create(title="C1", description="d")
         Course.objects.create(title="C2", description="d")
@@ -210,12 +206,10 @@ class CourseAPITests(TestCase):
         res = self.client.delete(f"/courses/{course.slug}/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-                             
     def test_unauthenticated_cannot_access(self):
         res = self.client.get("/courses/")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-                 
     def test_get_nonexistent_course(self):
         self._auth(self.admin)
         res = self.client.get("/courses/9999/")

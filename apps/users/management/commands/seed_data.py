@@ -148,7 +148,6 @@ GROUP_MESSAGES = [
     "Has anyone started on the mini project yet?",
 ]
 
-
 class Command(BaseCommand):
     help = "Seed the database with realistic dummy data for development"
 
@@ -185,7 +184,6 @@ class Command(BaseCommand):
             User.objects.filter(is_superuser=False).delete()
             self.stdout.write(self.style.SUCCESS("Flushed."))
 
-                     
         self.stdout.write("Creating users...")
         all_first_names = FIRST_NAMES_MALE + FIRST_NAMES_FEMALE
         random.shuffle(all_first_names)
@@ -193,7 +191,7 @@ class Command(BaseCommand):
         def make_user(first, last, role, idx):
             username = f"{first.lower()}.{last.lower()}"
             email = f"{username}@lms.dev"
-                               
+
             if User.objects.filter(username=username).exists():
                 username = f"{username}{idx}"
                 email = f"{username}@lms.dev"
@@ -205,7 +203,7 @@ class Command(BaseCommand):
                 last_name=last,
                 role=role,
             )
-                                                       
+
             user.date_joined = now - datetime.timedelta(days=random.randint(1, 90))
             user.save(update_fields=["date_joined"])
             return user
@@ -232,7 +230,6 @@ class Command(BaseCommand):
             f"  {len(admins)} admins, {len(instructors)} instructors, {len(students)} students"
         ))
 
-                       
         self.stdout.write("Creating courses...")
         courses = []
         for cd in COURSES:
@@ -246,7 +243,6 @@ class Command(BaseCommand):
             courses.append((course, cd["lessons"]))
         self.stdout.write(self.style.SUCCESS(f"  {len(courses)} courses"))
 
-                       
         self.stdout.write("Creating lessons...")
         all_lessons = []
         for course, lesson_defs in courses:
@@ -263,7 +259,6 @@ class Command(BaseCommand):
                 all_lessons.append(lesson)
         self.stdout.write(self.style.SUCCESS(f"  {len(all_lessons)} lessons"))
 
-                      
         self.stdout.write("Creating groups...")
         groups = []
         student_pool = list(students)
@@ -279,24 +274,23 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                                 
+
                 start = idx * students_per_group
                 end = start + students_per_group
                 if idx == len(GROUPS) - 1:
                     end = len(student_pool)
                 group_students = student_pool[start:end]
                 group.students.set(group_students)
-                                    
+
                 group_courses = random.sample([c for c, _ in courses], k=min(3, len(courses)))
                 group.courses.set(group_courses)
             groups.append(group)
         self.stdout.write(self.style.SUCCESS(f"  {len(groups)} groups"))
 
-                        
         self.stdout.write("Creating homework assignments...")
         homeworks = []
         for lesson in all_lessons:
-                                     
+
             num_hw = random.randint(1, 2)
             for i in range(num_hw):
                 template = HOMEWORK_TEMPLATES[i % len(HOMEWORK_TEMPLATES)]
@@ -314,17 +308,16 @@ class Command(BaseCommand):
                     },
                 )
                 if created:
-                                                          
+
                     hw_created = now - datetime.timedelta(days=random.randint(7, 60))
                     Homework.objects.filter(pk=hw.pk).update(created_at=hw_created)
                 homeworks.append(hw)
         self.stdout.write(self.style.SUCCESS(f"  {len(homeworks)} homework assignments"))
 
-                                    
         self.stdout.write("Creating homework submissions...")
         submission_count = 0
         for hw in homeworks:
-                                              
+
             submitters = random.sample(students, k=random.randint(5, min(20, len(students))))
             for student in submitters:
                 if HomeworkSubmission.objects.filter(homework=hw, student=student).exists():
@@ -367,14 +360,13 @@ class Command(BaseCommand):
                     graded_at=graded_at,
                     graded_by=graded_by,
                 )
-                                       
+
                 HomeworkSubmission.objects.filter(pk=sub.pk).update(
                     created_at=submitted_at - datetime.timedelta(hours=random.randint(1, 24))
                 )
                 submission_count += 1
         self.stdout.write(self.style.SUCCESS(f"  {submission_count} submissions"))
 
-                          
         self.stdout.write("Creating attendance sessions & records...")
         session_count = 0
         record_count = 0
@@ -387,7 +379,6 @@ class Command(BaseCommand):
             if not group_courses or not group_students:
                 continue
 
-                                                   
             num_sessions = random.randint(10, 15)
             session_dates = set()
             while len(session_dates) < num_sessions:
@@ -407,13 +398,12 @@ class Command(BaseCommand):
                     note="",
                 )
                 session.save()
-                                       
+
                 AttendanceSession.objects.filter(pk=session.pk).update(
                     created_at=timezone.make_aware(datetime.datetime.combine(sd, datetime.time(9, 0)))
                 )
                 session_count += 1
 
-                                          
                 for student in group_students:
                     st = random.choices(statuses, weights=status_weights)[0]
                     AttendanceRecord.objects.create(
@@ -425,12 +415,11 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"  {session_count} sessions, {record_count} records"))
 
-                        
         self.stdout.write("Creating payments & course purchases...")
         payment_count = 0
         purchase_count = 0
         for student in students:
-                                                
+
             num_purchases = random.randint(1, 3)
             purchased_courses = random.sample([c for c, _ in courses], k=min(num_purchases, len(courses)))
             for course in purchased_courses:
@@ -457,16 +446,14 @@ class Command(BaseCommand):
                 purchase_count += 1
         self.stdout.write(self.style.SUCCESS(f"  {payment_count} payments, {purchase_count} purchases"))
 
-                        
         self.stdout.write("Creating messages...")
         dm_count = 0
         gm_count = 0
 
-                                                               
         for msg_list in DIRECT_MESSAGES:
             instructor = random.choice(instructors)
             student = random.choice(students)
-                                                              
+
             a_id, b_id = sorted([instructor.pk, student.pk])
             user_a = User.objects.get(pk=a_id)
             user_b = User.objects.get(pk=b_id)
@@ -487,7 +474,6 @@ class Command(BaseCommand):
                 DirectMessage.objects.filter(pk=dm.pk).update(created_at=msg_time)
                 dm_count += 1
 
-                             
         for group in groups:
             conv, _ = GroupConversation.objects.get_or_create(group=group)
             members = list(group.students.all()) + ([group.instructor] if group.instructor else [])

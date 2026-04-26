@@ -15,12 +15,10 @@ from .serializers import GroupDetailSerializer, GroupListSerializer
 
 User = get_user_model()
 
-
 class GroupPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 50
-
 
 class GroupListAPIView(generics.ListCreateAPIView):
     queryset = Group.objects.all()
@@ -35,7 +33,6 @@ class GroupListAPIView(generics.ListCreateAPIView):
         if self.request.method == "POST":
             return GroupDetailSerializer
         return GroupListSerializer
-
 
 class GroupDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -62,7 +59,6 @@ class GroupDetailAPIView(APIView):
         if group is None:
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
 
-                                 
         if not self._can_access_group(request.user, group):
             return Response(
                 {"detail": "You do not have permission to view this group."},
@@ -73,7 +69,7 @@ class GroupDetailAPIView(APIView):
 
     @swagger_auto_schema(request_body=GroupDetailSerializer, responses={200: GroupDetailSerializer})
     def patch(self, request, group_id):
-                                       
+
         if request.user.role != "admin":
             return Response(
                 {"detail": "Only admins can update groups."},
@@ -89,7 +85,7 @@ class GroupDetailAPIView(APIView):
         return Response(GroupDetailSerializer(group).data)
 
     def delete(self, request, group_id):
-                                       
+
         if request.user.role != "admin":
             return Response(
                 {"detail": "Only admins can delete groups."},
@@ -101,7 +97,6 @@ class GroupDetailAPIView(APIView):
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
         group.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 class MyGroupsAPIView(APIView):
     """Return the groups the current user belongs to, with full member details."""
@@ -117,7 +112,6 @@ class MyGroupsAPIView(APIView):
             groups = Group.objects.all()
         return Response(GroupDetailSerializer(groups, many=True).data)
 
-
 class GroupMemberProfileAPIView(APIView):
     """View another user's profile — only if they share a group with you."""
     permission_classes = (permissions.IsAuthenticated,)
@@ -129,11 +123,10 @@ class GroupMemberProfileAPIView(APIView):
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
-                                
+
         if user.role == "admin":
             return Response(UserSerializer(target).data)
 
-                                                                      
         if user.role == "student":
             my_group_ids = user.student_groups.values_list("id", flat=True)
         elif user.role == "instructor":
@@ -141,7 +134,6 @@ class GroupMemberProfileAPIView(APIView):
         else:
             my_group_ids = Group.objects.none().values_list("id", flat=True)
 
-                                                                               
         shares_group = Group.objects.filter(
             pk__in=my_group_ids,
         ).filter(

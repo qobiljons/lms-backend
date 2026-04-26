@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import CoursePurchase, Payment
 
-
 class PaymentSerializer(serializers.ModelSerializer):
     user_detail = serializers.SerializerMethodField()
 
@@ -28,7 +27,6 @@ class PaymentSerializer(serializers.ModelSerializer):
             "first_name": obj.user.first_name,
             "last_name": obj.user.last_name,
         }
-
 
 class CoursePurchaseSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source="course.title", read_only=True)

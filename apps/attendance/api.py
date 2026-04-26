@@ -9,7 +9,6 @@ from rest_framework.views import APIView
 from .models import AttendanceRecord, AttendanceSession
 from .serializers import AttendanceSessionSerializer, AttendanceSessionWriteSerializer
 
-
 def _get_attendance_queryset_for_user(user):
     queryset = AttendanceSession.objects.select_related(
         "group", "course", "taken_by"
@@ -20,18 +19,15 @@ def _get_attendance_queryset_for_user(user):
         return queryset.filter(group__instructor=user)
     return queryset.filter(records__student=user).distinct()
 
-
 def _can_manage_attendance(user, session):
     if user.role == "admin":
         return True
     return user.role == "instructor" and session.group.instructor_id == user.id
 
-
 class AttendancePagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
-
 
 class AttendanceSessionListCreateAPIView(generics.ListCreateAPIView):
     pagination_class = AttendancePagination
@@ -82,7 +78,6 @@ class AttendanceSessionListCreateAPIView(generics.ListCreateAPIView):
         return Response(
             AttendanceSessionSerializer(session).data, status=status.HTTP_201_CREATED
         )
-
 
 class AttendanceSessionDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -147,7 +142,6 @@ class AttendanceSessionDetailAPIView(APIView):
         session.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class AttendanceOverviewAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -193,7 +187,6 @@ class AttendanceOverviewAPIView(APIView):
                 "groups": list(group_stats),
             }
         )
-
 
 class MyAttendanceAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)

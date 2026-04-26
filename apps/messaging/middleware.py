@@ -8,14 +8,12 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.users.models import User
 
-
 @database_sync_to_async
 def _get_user(user_id):
     try:
         return User.objects.get(id=user_id)
     except User.DoesNotExist:
         return AnonymousUser()
-
 
 class JWTQueryAuthMiddleware:
     def __init__(self, inner):
@@ -42,7 +40,6 @@ class JWTQueryAuthMiddleware:
                 scope["user"] = AnonymousUser()
 
         return await self.inner(scope, receive, send)
-
 
 def JWTAuthMiddlewareStack(inner):
     return JWTQueryAuthMiddleware(AuthMiddlewareStack(inner))

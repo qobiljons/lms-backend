@@ -10,7 +10,6 @@ from apps.groups.models import Group
 
 from .models import AttendanceRecord, AttendanceSession
 
-
 class AttendanceAPITests(TestCase):
     def setUp(self):
         User = get_user_model()

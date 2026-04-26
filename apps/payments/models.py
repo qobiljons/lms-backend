@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-
 class Payment(models.Model):
     STATUS_CHOICES = [
         ("succeeded", "Succeeded"),
@@ -28,7 +27,6 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - ${self.amount} ({self.status})"
-
 
 class CoursePurchase(models.Model):
     user = models.ForeignKey(

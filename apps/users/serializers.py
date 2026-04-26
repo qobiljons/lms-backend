@@ -3,7 +3,6 @@ from rest_framework import serializers
 
 from .models import UserProfile
 
-
 class UserProfileSerializer(serializers.ModelSerializer):
     default_avatar = serializers.SerializerMethodField()
 
@@ -14,7 +13,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_default_avatar(self, obj):
         seed = obj.user.username
         return f"https://api.dicebear.com/9.x/avataaars/svg?seed={seed}"
-
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
@@ -34,7 +32,6 @@ class UserSerializer(serializers.ModelSerializer):
         else:
             return []
         return [{"id": g.id, "name": g.name} for g in qs]
-
 
 class UpdateMeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,11 +54,9 @@ class UpdateMeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("username already in use")
         return value
 
-
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(min_length=8, write_only=True)
-
 
 class AdminUpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -86,10 +81,8 @@ class AdminUpdateUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("username already in use")
         return value
 
-
 class AdminSetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(min_length=8, write_only=True)
-
 
 class SignupSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -111,7 +104,6 @@ class SignupSerializer(serializers.Serializer):
         user_model = get_user_model()
         user = user_model.objects.create_user(password=password, **validated_data)
         return user
-
 
 class AdminCreateUserSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -137,7 +129,6 @@ class AdminCreateUserSerializer(serializers.Serializer):
         user_model = get_user_model()
         user = user_model.objects.create_user(password=password, **validated_data)
         return user
-
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()

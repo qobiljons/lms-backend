@@ -10,12 +10,10 @@ from .models import (
 
 User = get_user_model()
 
-
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "username", "first_name", "last_name", "role")
-
 
 class DirectMessageSerializer(serializers.ModelSerializer):
     sender_detail = UserMiniSerializer(source="sender", read_only=True)
@@ -24,7 +22,6 @@ class DirectMessageSerializer(serializers.ModelSerializer):
         model = DirectMessage
         fields = ("id", "conversation", "sender", "sender_detail", "body", "is_read", "read_at", "created_at")
         read_only_fields = ("id", "conversation", "sender", "created_at", "read_at")
-
 
 class DirectConversationSerializer(serializers.ModelSerializer):
     other_user = serializers.SerializerMethodField()
@@ -48,9 +45,8 @@ class DirectConversationSerializer(serializers.ModelSerializer):
 
     def get_unread_count(self, obj):
         me = self.context["request"].user
-                                                                      
-        return obj.messages.filter(is_read=False).exclude(sender=me).count()
 
+        return obj.messages.filter(is_read=False).exclude(sender=me).count()
 
 class GroupMessageSerializer(serializers.ModelSerializer):
     sender_detail = UserMiniSerializer(source="sender", read_only=True)
@@ -59,7 +55,6 @@ class GroupMessageSerializer(serializers.ModelSerializer):
         model = GroupMessage
         fields = ("id", "conversation", "sender", "sender_detail", "body", "created_at")
         read_only_fields = ("id", "conversation", "sender", "created_at")
-
 
 class GroupConversationSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(source="group.name", read_only=True)
@@ -79,7 +74,7 @@ class GroupConversationSerializer(serializers.ModelSerializer):
     def get_unread_count(self, obj):
         me = self.context["request"].user
         from .models import MessageReadReceipt
-                                                                     
+
         read_message_ids = MessageReadReceipt.objects.filter(
             user=me,
             group_message__conversation=obj

@@ -3,7 +3,6 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 from .models import User, UserProfile
 
-
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     model = User
@@ -25,7 +24,6 @@ class UserAdmin(DjangoUserAdmin):
             "fields": ("username", "email", "password1", "password2", "role", "is_staff", "is_active"),
         }),
     )
-
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):

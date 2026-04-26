@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-
 class AttendanceSession(models.Model):
     group = models.ForeignKey(
         "groups.Group",
@@ -39,7 +38,6 @@ class AttendanceSession(models.Model):
     def __str__(self) -> str:
         course_text = self.course.title if self.course else "General"
         return f"{self.group.name} - {course_text} ({self.session_date})"
-
 
 class AttendanceRecord(models.Model):
     class Status(models.TextChoices):

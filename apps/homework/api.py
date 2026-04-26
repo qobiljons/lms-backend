@@ -13,7 +13,6 @@ from .serializers import (
     HomeworkSubmissionSerializer,
 )
 
-
 class HomeworkListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -28,12 +27,10 @@ class HomeworkListCreateAPIView(generics.ListCreateAPIView):
             "lesson", "lesson__course", "created_by"
         ).prefetch_related("submissions")
 
-                                      
         lesson_id = self.request.query_params.get("lesson")
         if lesson_id:
             queryset = queryset.filter(lesson_id=lesson_id)
 
-                                                               
         if user.role == "student":
             queryset = queryset.filter(
                 lesson__course__groups__students=user
@@ -60,7 +57,6 @@ class HomeworkListCreateAPIView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(created_by=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 class HomeworkDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -107,7 +103,6 @@ class HomeworkDetailAPIView(APIView):
         homework.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class HomeworkSubmissionListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -122,15 +117,13 @@ class HomeworkSubmissionListCreateAPIView(generics.ListCreateAPIView):
             "homework", "homework__lesson", "student", "graded_by"
         ).prefetch_related("uploaded_files")
 
-                                        
         homework_id = self.request.query_params.get("homework")
         if homework_id:
             queryset = queryset.filter(homework_id=homework_id)
 
-                                                 
         if user.role == "student":
             queryset = queryset.filter(student=user)
-                                                       
+
         elif user.role == "instructor":
             queryset = queryset.filter(
                 homework__lesson__course__groups__instructor=user
@@ -142,7 +135,6 @@ class HomeworkSubmissionListCreateAPIView(generics.ListCreateAPIView):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
-
 
 class HomeworkSubmissionDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -161,7 +153,6 @@ class HomeworkSubmissionDetailAPIView(APIView):
         if not submission:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-                                                     
         if request.user.role == "student" and submission.student != request.user:
             return Response(
                 {"detail": "You can only view your own submissions."},
@@ -179,7 +170,6 @@ class HomeworkSubmissionDetailAPIView(APIView):
         if not submission:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-                                                                      
         if request.user.role == "student":
             if submission.student != request.user:
                 return Response(
@@ -195,7 +185,7 @@ class HomeworkSubmissionDetailAPIView(APIView):
                 submission, data=request.data, partial=True, context={"request": request}
             )
         else:
-                                          
+
             serializer = HomeworkSubmissionSerializer(
                 submission, data=request.data, partial=True
             )
@@ -207,7 +197,6 @@ class HomeworkSubmissionDetailAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(HomeworkSubmissionSerializer(submission).data)
-
 
 class HomeworkFileUploadAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -223,7 +212,6 @@ class HomeworkFileUploadAPIView(APIView):
         except HomeworkSubmission.DoesNotExist:
             return Response({"detail": "Submission not found"}, status=status.HTTP_404_NOT_FOUND)
 
-                                                                   
         if submission.student != request.user:
             return Response(
                 {"detail": "You can only upload files to your own submissions."},
@@ -243,7 +231,6 @@ class HomeworkFileUploadAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-                            
         homework_file = HomeworkFile.objects.create(
             submission=submission,
             file=uploaded_file,

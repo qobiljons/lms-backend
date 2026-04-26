@@ -6,7 +6,6 @@ from .models import Homework, HomeworkFile, HomeworkSubmission
 
 User = get_user_model()
 
-
 class HomeworkSerializer(serializers.ModelSerializer):
     lesson_title = serializers.CharField(source="lesson.title", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
@@ -48,13 +47,11 @@ class HomeworkSerializer(serializers.ModelSerializer):
         except HomeworkSubmission.DoesNotExist:
             return None
 
-
 class HomeworkFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomeworkFile
         fields = ("id", "file", "filename", "file_type", "file_size", "uploaded_at")
         read_only_fields = ("id", "uploaded_at")
-
 
 class HomeworkSubmissionSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source="student.username", read_only=True)
@@ -100,7 +97,6 @@ class HomeworkSubmissionSerializer(serializers.ModelSerializer):
         if attrs.get("status") == "submitted" and self.instance and not self.instance.submitted_at:
             attrs["submitted_at"] = timezone.now()
         return attrs
-
 
 class HomeworkSubmissionCreateSerializer(serializers.ModelSerializer):
     class Meta:

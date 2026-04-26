@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-
 class Homework(models.Model):
     """Homework assignment for a lesson"""
     lesson = models.ForeignKey(
@@ -33,7 +32,6 @@ class Homework(models.Model):
 
     def __str__(self):
         return f"{self.lesson.title} - {self.title}"
-
 
 class HomeworkSubmission(models.Model):
     """Student's homework submission"""
@@ -99,7 +97,6 @@ class HomeworkSubmission(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.homework.title}"
-
 
 class HomeworkFile(models.Model):
     """File uploaded for homework submission"""

@@ -21,10 +21,8 @@ from .serializers import (
 
 User = get_user_model()
 
-
 class SendMessageSerializer(serializers.Serializer):
     body = serializers.CharField(allow_blank=False, trim_whitespace=True)
-
 
 def get_or_create_direct_conversation(user_1, user_2):
     if user_1.id > user_2.id:
@@ -35,14 +33,12 @@ def get_or_create_direct_conversation(user_1, user_2):
     )
     return conversation
 
-
 def user_can_access_group(user, group: Group):
     if user.role == "admin":
         return True
     if group.instructor_id == user.id:
         return True
     return group.students.filter(pk=user.id).exists()
-
 
 class DirectConversationListAPIView(generics.ListAPIView):
     serializer_class = DirectConversationSerializer
@@ -54,7 +50,6 @@ class DirectConversationListAPIView(generics.ListAPIView):
             Q(user_a=user) | Q(user_b=user)
         ).select_related("user_a", "user_b")
 
-
 class ReachableUserListAPIView(generics.ListAPIView):
     serializer_class = UserMiniSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -63,7 +58,6 @@ class ReachableUserListAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         return User.objects.exclude(pk=self.request.user.id).order_by("username")
-
 
 class DirectMessagesAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -110,7 +104,6 @@ class DirectMessagesAPIView(APIView):
         )
         conversation.save(update_fields=["updated_at"])
 
-                                     
         serialized_data = DirectMessageSerializer(message).data
         pair = sorted([request.user.id, target.id])
         room_name = f"dm_{pair[0]}_{pair[1]}"
@@ -126,7 +119,6 @@ class DirectMessagesAPIView(APIView):
 
         return Response(serialized_data, status=status.HTTP_201_CREATED)
 
-
 class GroupConversationListAPIView(generics.ListAPIView):
     serializer_class = GroupConversationSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -139,7 +131,6 @@ class GroupConversationListAPIView(generics.ListAPIView):
         if user.role == "instructor":
             return queryset.filter(group__instructor=user)
         return queryset.filter(group__students=user).distinct()
-
 
 class GroupMessagesAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -185,7 +176,6 @@ class GroupMessagesAPIView(APIView):
         )
         conversation.save(update_fields=["updated_at"])
 
-                                     
         serialized_data = GroupMessageSerializer(message).data
         room_name = f"group_chat_{group_id}"
 
@@ -200,7 +190,6 @@ class GroupMessagesAPIView(APIView):
 
         return Response(serialized_data, status=status.HTTP_201_CREATED)
 
-
 class MarkDirectMessagesReadAPIView(APIView):
     """Mark all messages from a user as read"""
     permission_classes = (permissions.IsAuthenticated,)
@@ -213,7 +202,7 @@ class MarkDirectMessagesReadAPIView(APIView):
             return Response({"detail": "not found"}, status=status.HTTP_404_NOT_FOUND)
 
         conversation = get_or_create_direct_conversation(request.user, target)
-                                                       
+
         from django.utils import timezone
         updated_count = conversation.messages.filter(
             sender=target,
@@ -221,7 +210,6 @@ class MarkDirectMessagesReadAPIView(APIView):
         ).update(is_read=True, read_at=timezone.now())
 
         return Response({"marked_read": updated_count}, status=status.HTTP_200_OK)
-
 
 class MarkGroupMessagesReadAPIView(APIView):
     """Mark all group messages as read for the current user"""
@@ -242,7 +230,6 @@ class MarkGroupMessagesReadAPIView(APIView):
 
         conversation, _ = GroupConversation.objects.get_or_create(group=group)
 
-                                               
         read_message_ids = MessageReadReceipt.objects.filter(
             user=request.user,
             group_message__conversation=conversation
@@ -252,7 +239,6 @@ class MarkGroupMessagesReadAPIView(APIView):
             id__in=read_message_ids
         ).exclude(sender=request.user)
 
-                              
         receipts = [
             MessageReadReceipt(user=request.user, group_message=msg)
             for msg in unread_messages
@@ -260,7 +246,6 @@ class MarkGroupMessagesReadAPIView(APIView):
         MessageReadReceipt.objects.bulk_create(receipts, ignore_conflicts=True)
 
         return Response({"marked_read": len(receipts)}, status=status.HTTP_200_OK)
-
 
 class UnreadCountAPIView(APIView):
     """Get total unread message count for the current user"""
@@ -270,7 +255,6 @@ class UnreadCountAPIView(APIView):
     def get(self, request):
         user = request.user
 
-                                      
         direct_unread = DirectMessage.objects.filter(
             conversation__in=DirectConversation.objects.filter(
                 Q(user_a=user) | Q(user_b=user)
@@ -278,7 +262,6 @@ class UnreadCountAPIView(APIView):
             is_read=False
         ).exclude(sender=user).count()
 
-                                     
         user_groups = []
         if user.role == "admin":
             user_groups = Group.objects.all()

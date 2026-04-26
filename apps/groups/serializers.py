@@ -9,7 +9,6 @@ from .models import Group
 
 User = get_user_model()
 
-
 class GroupListSerializer(serializers.ModelSerializer):
     instructor_name = serializers.SerializerMethodField()
     student_count = serializers.SerializerMethodField()
@@ -40,7 +39,6 @@ class GroupListSerializer(serializers.ModelSerializer):
 
     def get_course_count(self, obj):
         return obj.courses.count()
-
 
 class GroupDetailSerializer(serializers.ModelSerializer):
     instructor_detail = UserSerializer(source="instructor", read_only=True)

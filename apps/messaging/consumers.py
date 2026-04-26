@@ -7,7 +7,6 @@ from .api import get_or_create_direct_conversation, user_can_access_group
 from .models import DirectMessage, GroupConversation, GroupMessage
 from .serializers import DirectMessageSerializer, GroupMessageSerializer
 
-
 class DirectChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         user = self.scope.get("user")
@@ -59,10 +58,8 @@ class DirectChatConsumer(AsyncJsonWebsocketConsumer):
         )
         conversation.save(update_fields=["updated_at"])
 
-                                              
         serialized_data = DirectMessageSerializer(message).data
         return serialized_data
-
 
 class GroupChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
@@ -122,6 +119,5 @@ class GroupChatConsumer(AsyncJsonWebsocketConsumer):
         )
         conversation.save(update_fields=["updated_at"])
 
-                                              
         serialized_data = GroupMessageSerializer(message).data
         return serialized_data

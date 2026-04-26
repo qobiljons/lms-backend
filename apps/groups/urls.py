@@ -9,4 +9,3 @@ urlpatterns = [
     path("<int:group_id>/", api.GroupDetailAPIView.as_view(), name="group_detail"),
 ]
 
-

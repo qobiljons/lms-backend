@@ -10,10 +10,8 @@ from apps.users.permissions import IsAdmin
 from .models import Lesson
 from .serializers import LessonSerializer
 
-
 def has_course_access(user, course):
     return get_course_access_denial_message(user, course) is None
-
 
 class LessonListAPIView(generics.ListCreateAPIView):
     serializer_class = LessonSerializer
@@ -66,7 +64,6 @@ class LessonListAPIView(generics.ListCreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
 
 class LessonDetailAPIView(APIView):
     permission_classes = (permissions.IsAuthenticated,)

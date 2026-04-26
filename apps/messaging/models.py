@@ -2,7 +2,6 @@ from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
 
-
 class DirectConversation(models.Model):
     user_a = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -33,7 +32,6 @@ class DirectConversation(models.Model):
     def __str__(self) -> str:
         return f"{self.user_a.username} <> {self.user_b.username}"
 
-
 class DirectMessage(models.Model):
     conversation = models.ForeignKey(
         DirectConversation,
@@ -57,7 +55,6 @@ class DirectMessage(models.Model):
     def __str__(self) -> str:
         return f"{self.sender.username}: {self.body[:40]}"
 
-
 class GroupConversation(models.Model):
     group = models.OneToOneField(
         "groups.Group",
@@ -73,7 +70,6 @@ class GroupConversation(models.Model):
 
     def __str__(self) -> str:
         return f"Group Chat: {self.group.name}"
-
 
 class GroupMessage(models.Model):
     conversation = models.ForeignKey(
@@ -95,7 +91,6 @@ class GroupMessage(models.Model):
 
     def __str__(self) -> str:
         return f"{self.sender.username}@{self.conversation.group.name}: {self.body[:40]}"
-
 
 class MessageReadReceipt(models.Model):
     """Track which users have read which group messages"""
