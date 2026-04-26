@@ -1,0 +1,48 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            echo "=== Pulling latest code ==="
+            TEMP_DIR=$(mktemp -d)
+            cd $TEMP_DIR
+            git clone --depth 1 https://github.com/${{ github.repository }}.git .
+
+            # Sync code, preserve .env and Docker volumes
+            rsync -a --exclude='.git' --exclude='.venv' --exclude='venv' --exclude='__pycache__' --exclude='.env' --exclude='media' --exclude='.idea' --exclude='.ruff_cache' . /final-project/backend/
+
+            rm -rf $TEMP_DIR
+
+            echo "=== Rebuilding Docker image ==="
+            cd /final-project/backend
+            docker compose build
+
+            echo "=== Restarting containers ==="
+            docker compose up -d
+
+            echo "=== Running migrations ==="
+            sleep 5
+            docker compose exec -T backend python manage.py migrate --noinput
+            docker compose exec -T backend python manage.py collectstatic --noinput
+
+            echo "=== Verifying ==="
+            docker compose ps
+            echo "=== Backend deployed successfully ==="

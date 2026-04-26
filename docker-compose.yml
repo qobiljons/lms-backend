@@ -1,7 +1,46 @@
 services:
-  web:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lms_db
+      POSTGRES_USER: lms_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-LmsSecure2026!}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms_user -d lms_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
     build: .
+    restart: unless-stopped
     ports:
       - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DEBUG: ${DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      DB_NAME: lms_db
+      DB_USER: lms_user
+      DB_PASSWORD: ${DB_PASSWORD:-LmsSecure2026!}
+      DB_HOST: db
+      DB_PORT: 5432
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      DJANGO_SETTINGS_MODULE: config.settings
     volumes:
-      - .:/app
+      - media:/app/media
+      - static:/app/staticfiles
+
+volumes:
+  pgdata:
+  media:
+  static:

@@ -3,3 +3,8 @@ __pycache__
 *.pyc
 *.sqlite3
 .git
+.idea
+.ruff_cache
+.DS_Store
+.env.production
+*.md

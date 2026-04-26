@@ -244,7 +244,6 @@ class DashboardStatsAPIView(APIView):
         result = []
         for i in range(weeks):
             d = start + datetime.timedelta(weeks=i)
-                             
             d = d - datetime.timedelta(days=d.weekday())
             label = d.strftime("%b %d")
             result.append({"week": label, "count": lookup.get(label, 0)})
@@ -277,8 +276,6 @@ class DashboardStatsAPIView(APIView):
     @staticmethod
     def _attendance_status_by_session(sessions_qs, limit=10):
         """Return per-session attendance breakdown for bar chart."""
-        from django.db.models import Count, Q
-
         recent = sessions_qs.order_by("-session_date")[:limit]
         result = []
         for s in reversed(recent):
@@ -325,10 +322,11 @@ class DashboardStatsAPIView(APIView):
         return result
 
     def get(self, request):
+        import datetime
         from decimal import Decimal
 
         from django.contrib.auth import get_user_model
-        from django.db.models import Avg, Count, Q, Sum
+        from django.db.models import Avg, Count, F, Q, Sum
         from django.utils import timezone
 
         from apps.attendance.models import AttendanceRecord, AttendanceSession
@@ -343,6 +341,9 @@ class DashboardStatsAPIView(APIView):
 
         now = timezone.now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        week_start = (now - datetime.timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
         if user.role == "admin":
             total_revenue = (
@@ -354,6 +355,16 @@ class DashboardStatsAPIView(APIView):
                 .aggregate(total=Sum("amount"))["total"]
                 or Decimal("0.00")
             )
+            weekly_revenue = (
+                Payment.objects.filter(status="succeeded", created_at__gte=week_start)
+                .aggregate(total=Sum("amount"))["total"]
+                or Decimal("0.00")
+            )
+
+            succeeded_payments = Payment.objects.filter(status="succeeded")
+            avg_payment = float(
+                succeeded_payments.aggregate(avg=Avg("amount"))["avg"] or 0
+            )
 
             total_records = AttendanceRecord.objects.count()
             present_records = AttendanceRecord.objects.filter(
@@ -361,25 +372,179 @@ class DashboardStatsAPIView(APIView):
             ).count()
             attendance_rate = round((present_records / total_records * 100), 1) if total_records > 0 else 0
 
-            recent_payments = Payment.objects.filter(status="succeeded").order_by("-created_at")[:5]
+            recent_payments = Payment.objects.filter(status="succeeded").select_related("user").order_by("-created_at")[:8]
 
-                        
+            # Charts
             user_growth = self._week_series(User.objects.all(), "date_joined", weeks=8)
             revenue_trend = self._revenue_series(weeks=8)
             attendance_by_session = self._attendance_status_by_session(AttendanceSession.objects.all())
 
-                                            
             att_status_dist = list(
                 AttendanceRecord.objects.values("status")
                 .annotate(count=Count("id"))
                 .order_by("-count")
             )
 
-                                                                
             course_pop = []
             for c in Course.objects.all()[:6]:
                 student_count = User.objects.filter(student_groups__courses=c).distinct().count()
                 course_pop.append({"name": c.title[:20], "students": student_count})
+
+            # Payment status distribution
+            payment_status_dist = list(
+                Payment.objects.values("status")
+                .annotate(count=Count("id"))
+                .order_by("-count")
+            )
+
+            # Revenue by course (top 6)
+            revenue_by_course = []
+            for cp_row in (
+                CoursePurchase.objects.values("course__title")
+                .annotate(total=Sum("amount"))
+                .order_by("-total")[:6]
+            ):
+                revenue_by_course.append({
+                    "name": (cp_row["course__title"] or "Unknown")[:20],
+                    "revenue": float(cp_row["total"] or 0),
+                })
+
+            # Daily sessions activity (14 days)
+            daily_sessions = self._daily_series(
+                AttendanceSession.objects.all(), "session_date", days=14
+            )
+
+            # Homework stats
+            total_hw = Homework.objects.count()
+            total_subs = HomeworkSubmission.objects.count()
+            graded_subs = HomeworkSubmission.objects.filter(status="graded").count()
+            pending_subs = HomeworkSubmission.objects.filter(status="submitted").count()
+            draft_subs = HomeworkSubmission.objects.filter(status="draft").count()
+
+            # Recently registered users
+            recent_users = [
+                {
+                    "username": u.username,
+                    "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+                    "role": u.role,
+                    "date": u.date_joined.strftime("%b %d, %Y"),
+                }
+                for u in User.objects.order_by("-date_joined")[:6]
+            ]
+
+            new_users_week = User.objects.filter(date_joined__gte=week_start).count()
+            new_users_month = User.objects.filter(date_joined__gte=month_start).count()
+
+            sessions_this_week = AttendanceSession.objects.filter(
+                session_date__gte=week_start.date()
+            ).count()
+
+            avg_score_all = float(
+                HomeworkSubmission.objects.filter(score__isnull=False)
+                .aggregate(avg=Avg("score"))["avg"] or 0
+            )
+
+            # Payment success rate
+            total_payment_attempts = Payment.objects.count()
+            payment_success_rate = (
+                round((succeeded_payments.count() / total_payment_attempts * 100), 1)
+                if total_payment_attempts > 0
+                else 0
+            )
+
+            # Month-over-month revenue growth
+            prev_month_end = month_start - datetime.timedelta(seconds=1)
+            prev_month_start = prev_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            prev_month_revenue = float(
+                Payment.objects.filter(
+                    status="succeeded",
+                    created_at__gte=prev_month_start,
+                    created_at__lt=month_start,
+                ).aggregate(total=Sum("amount"))["total"] or 0
+            )
+            current_month_revenue_float = float(monthly_revenue)
+            if prev_month_revenue > 0:
+                revenue_growth_pct = round(
+                    ((current_month_revenue_float - prev_month_revenue) / prev_month_revenue) * 100, 1
+                )
+            elif current_month_revenue_float > 0:
+                revenue_growth_pct = 100.0
+            else:
+                revenue_growth_pct = 0.0
+
+            # Top instructors by group/student count
+            top_instructors_qs = (
+                User.objects.filter(role="instructor")
+                .annotate(
+                    group_count=Count("instructed_groups", distinct=True),
+                    student_count=Count("instructed_groups__students", distinct=True),
+                )
+                .order_by("-student_count", "-group_count")[:5]
+            )
+            top_instructors = [
+                {
+                    "username": u.username,
+                    "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+                    "groups": u.group_count,
+                    "students": u.student_count,
+                }
+                for u in top_instructors_qs
+            ]
+
+            # Course conversion: courses with purchases vs total courses
+            courses_with_purchases = (
+                CoursePurchase.objects.values("course").distinct().count()
+            )
+            total_courses_count = Course.objects.count()
+            course_conversion_rate = (
+                round((courses_with_purchases / total_courses_count * 100), 1)
+                if total_courses_count > 0
+                else 0
+            )
+
+            # Engagement: students with at least one submission or attendance record
+            active_student_ids = set(
+                HomeworkSubmission.objects.values_list("student_id", flat=True)
+            ) | set(
+                AttendanceRecord.objects.values_list("student_id", flat=True)
+            )
+            total_students = User.objects.filter(role="student").count()
+            engagement_rate = (
+                round((len(active_student_ids) / total_students * 100), 1)
+                if total_students > 0
+                else 0
+            )
+
+            # Recent activity feed (mixed: new users, new payments, new submissions)
+            activity_feed = []
+            for u in User.objects.order_by("-date_joined")[:3]:
+                activity_feed.append({
+                    "type": "user",
+                    "title": f"{u.first_name} {u.last_name}".strip() or u.username,
+                    "subtitle": f"Joined as {u.role}",
+                    "date": u.date_joined.strftime("%b %d, %Y"),
+                    "timestamp": u.date_joined.timestamp(),
+                })
+            for p in Payment.objects.filter(status="succeeded").select_related("user").order_by("-created_at")[:3]:
+                activity_feed.append({
+                    "type": "payment",
+                    "title": f"${p.amount} payment",
+                    "subtitle": f"by @{p.user.username}",
+                    "date": p.created_at.strftime("%b %d, %Y"),
+                    "timestamp": p.created_at.timestamp(),
+                })
+            for s in HomeworkSubmission.objects.filter(status="submitted").select_related("student", "homework").order_by("-created_at")[:3]:
+                activity_feed.append({
+                    "type": "submission",
+                    "title": s.homework.title[:35],
+                    "subtitle": f"submitted by @{s.student.username}",
+                    "date": s.created_at.strftime("%b %d, %Y"),
+                    "timestamp": s.created_at.timestamp(),
+                })
+            activity_feed.sort(key=lambda x: x["timestamp"], reverse=True)
+            activity_feed = activity_feed[:8]
+            for item in activity_feed:
+                item.pop("timestamp", None)
 
             return Response({
                 "users": {
@@ -389,39 +554,63 @@ class DashboardStatsAPIView(APIView):
                     "students": User.objects.filter(role="student").count(),
                     "instructors": User.objects.filter(role="instructor").count(),
                     "admins": User.objects.filter(role="admin").count(),
+                    "new_this_week": new_users_week,
+                    "new_this_month": new_users_month,
                 },
                 "courses": {"total": Course.objects.count()},
                 "lessons": {"total": Lesson.objects.count()},
                 "groups": {"total": Group.objects.count()},
                 "homework": {
-                    "total": Homework.objects.count(),
-                    "submissions": HomeworkSubmission.objects.count(),
-                    "pending_grading": HomeworkSubmission.objects.filter(status="submitted").count(),
+                    "total": total_hw,
+                    "submissions": total_subs,
+                    "pending_grading": pending_subs,
+                    "graded": graded_subs,
+                    "drafts": draft_subs,
+                    "avg_score": round(avg_score_all, 1),
                 },
                 "attendance": {
                     "sessions": AttendanceSession.objects.count(),
                     "records": total_records,
                     "rate": attendance_rate,
+                    "sessions_this_week": sessions_this_week,
                 },
                 "finance": {
                     "total_revenue": str(total_revenue),
                     "monthly_revenue": str(monthly_revenue),
-                    "total_payments": Payment.objects.filter(status="succeeded").count(),
+                    "weekly_revenue": str(weekly_revenue),
+                    "prev_month_revenue": round(prev_month_revenue, 2),
+                    "revenue_growth_pct": revenue_growth_pct,
+                    "total_payments": succeeded_payments.count(),
+                    "avg_payment": round(avg_payment, 2),
+                    "payment_success_rate": payment_success_rate,
+                    "course_conversion_rate": course_conversion_rate,
                 },
+                "engagement": {
+                    "active_students": len(active_student_ids),
+                    "total_students": total_students,
+                    "engagement_rate": engagement_rate,
+                },
+                "top_instructors": top_instructors,
+                "activity_feed": activity_feed,
                 "recent_payments": [
                     {
                         "user": p.user.username,
+                        "name": f"{p.user.first_name} {p.user.last_name}".strip() or p.user.username,
                         "amount": str(p.amount),
                         "date": p.created_at.strftime("%b %d, %Y"),
                     }
                     for p in recent_payments
                 ],
+                "recent_users": recent_users,
                 "charts": {
                     "user_growth": user_growth,
                     "revenue_trend": revenue_trend,
                     "attendance_by_session": attendance_by_session,
                     "attendance_status_dist": att_status_dist,
                     "course_popularity": course_pop,
+                    "payment_status_dist": payment_status_dist,
+                    "revenue_by_course": revenue_by_course,
+                    "daily_sessions": daily_sessions,
                 },
             })
 
@@ -442,19 +631,92 @@ class DashboardStatsAPIView(APIView):
             hw_assignments = Homework.objects.filter(lesson__in=my_lessons)
             hw_submissions = HomeworkSubmission.objects.filter(homework__in=hw_assignments)
 
-                        
+            # Charts
             attendance_by_session = self._attendance_status_by_session(sessions)
             att_status_dist = list(
                 records.values("status").annotate(count=Count("id")).order_by("-count")
             )
 
-                               
             submission_trend = self._week_series(hw_submissions, "created_at", weeks=8)
 
-                                      
             group_sizes = [
                 {"name": g.name[:18], "students": g.students.count()}
                 for g in my_groups[:6]
+            ]
+
+            # Average score per homework assignment (recent 8)
+            avg_scores_by_hw = []
+            for hw in hw_assignments.order_by("-id")[:8]:
+                subs = hw_submissions.filter(homework=hw, score__isnull=False)
+                avg = subs.aggregate(avg=Avg("score"))["avg"]
+                if avg is not None:
+                    avg_scores_by_hw.append({
+                        "name": hw.title[:18],
+                        "avg_score": round(float(avg), 1),
+                        "max_score": hw.total_points,
+                    })
+            avg_scores_by_hw.reverse()
+
+            # Group attendance comparison
+            group_attendance = []
+            for g in my_groups[:6]:
+                g_sessions = sessions.filter(group=g)
+                g_records = records.filter(session__in=g_sessions)
+                g_total = g_records.count()
+                g_present = g_records.filter(
+                    status__in=["attended", "attended_online", "late"]
+                ).count()
+                g_rate = round((g_present / g_total * 100), 1) if g_total > 0 else 0
+                group_attendance.append({
+                    "name": g.name[:18],
+                    "rate": g_rate,
+                    "present": g_present,
+                    "total": g_total,
+                })
+
+            # Top students by average score
+            student_ids = User.objects.filter(student_groups__in=my_groups).distinct().values_list("id", flat=True)
+            top_students = list(
+                hw_submissions.filter(student__id__in=student_ids, score__isnull=False)
+                .values("student__username", "student__first_name", "student__last_name")
+                .annotate(avg_score=Avg("score"), total_submitted=Count("id"))
+                .order_by("-avg_score")[:5]
+            )
+            top_students_list = [
+                {
+                    "username": s["student__username"],
+                    "name": f"{s['student__first_name']} {s['student__last_name']}".strip() or s["student__username"],
+                    "avg_score": round(float(s["avg_score"]), 1),
+                    "submissions": s["total_submitted"],
+                }
+                for s in top_students
+            ]
+
+            # Recent submissions needing review
+            recent_submissions = [
+                {
+                    "student": s.student.username,
+                    "name": f"{s.student.first_name} {s.student.last_name}".strip() or s.student.username,
+                    "homework": s.homework.title[:25],
+                    "date": s.created_at.strftime("%b %d, %Y"),
+                    "status": s.status,
+                }
+                for s in hw_submissions.filter(status="submitted")
+                    .select_related("student", "homework")
+                    .order_by("-created_at")[:6]
+            ]
+
+            # Upcoming homework deadlines
+            upcoming_hw = [
+                {
+                    "title": hw.title[:25],
+                    "course": hw.lesson.course.title[:20] if hw.lesson.course else "",
+                    "due_date": hw.due_date.strftime("%b %d, %Y") if hw.due_date else None,
+                    "submissions": hw_submissions.filter(homework=hw).count(),
+                }
+                for hw in hw_assignments.filter(due_date__gte=now)
+                    .select_related("lesson__course")
+                    .order_by("due_date")[:5]
             ]
 
             return Response({
@@ -475,19 +737,25 @@ class DashboardStatsAPIView(APIView):
                     "records": total_records,
                     "rate": attendance_rate,
                 },
+                "recent_submissions": recent_submissions,
+                "upcoming_homework": upcoming_hw,
+                "top_students": top_students_list,
                 "charts": {
                     "attendance_by_session": attendance_by_session,
                     "attendance_status_dist": att_status_dist,
                     "submission_trend": submission_trend,
                     "group_sizes": group_sizes,
+                    "avg_scores_by_hw": avg_scores_by_hw,
+                    "group_attendance": group_attendance,
                 },
             })
 
-        else:           
+        else:  # student
             my_groups = user.student_groups.all()
 
             course_ids = my_groups.values_list("courses", flat=True).distinct()
-            my_courses_count = Course.objects.filter(id__in=course_ids).count()
+            enrolled_courses = Course.objects.filter(id__in=course_ids)
+            my_courses_count = enrolled_courses.count()
 
             purchased_count = CoursePurchase.objects.filter(user=user).count()
 
@@ -500,12 +768,11 @@ class DashboardStatsAPIView(APIView):
 
             recent_records = my_records.select_related("session__group", "session__course").order_by("-session__session_date")[:5]
 
-                        
+            # Charts
             att_status_dist = list(
                 my_records.values("status").annotate(count=Count("id")).order_by("-count")
             )
 
-                                                   
             att_timeline = []
             recent_sessions = my_records.select_related("session").order_by("session__session_date")[:15]
             for r in recent_sessions:
@@ -515,15 +782,74 @@ class DashboardStatsAPIView(APIView):
                     "label": r.status.replace("_", " ").title(),
                 })
 
-                                       
             score_trend = []
-            graded = my_submissions.filter(score__isnull=False).order_by("graded_at")[:10]
+            graded = my_submissions.filter(score__isnull=False).select_related("homework").order_by("graded_at")[:10]
             for s in graded:
                 score_trend.append({
                     "name": s.homework.title[:15],
                     "score": float(s.score),
                     "total": s.homework.total_points,
                 })
+
+            # Course progress (per-course homework completion)
+            course_progress = []
+            for course in enrolled_courses[:6]:
+                c_lessons = Lesson.objects.filter(course=course)
+                c_hw = Homework.objects.filter(lesson__in=c_lessons)
+                c_total = c_hw.count()
+                c_done = my_submissions.filter(
+                    homework__in=c_hw, status__in=["submitted", "graded"]
+                ).count()
+                c_avg = my_submissions.filter(
+                    homework__in=c_hw, score__isnull=False
+                ).aggregate(avg=Avg("score"))["avg"]
+                course_progress.append({
+                    "name": course.title[:22],
+                    "total": c_total,
+                    "done": c_done,
+                    "avg_score": round(float(c_avg), 1) if c_avg else None,
+                })
+
+            # Upcoming homework
+            all_hw = Homework.objects.filter(
+                lesson__course__id__in=course_ids, due_date__gte=now
+            ).select_related("lesson__course").order_by("due_date")[:5]
+            upcoming_hw = []
+            for hw in all_hw:
+                sub = my_submissions.filter(homework=hw).first()
+                upcoming_hw.append({
+                    "title": hw.title[:25],
+                    "course": hw.lesson.course.title[:20] if hw.lesson.course else "",
+                    "due_date": hw.due_date.strftime("%b %d, %Y"),
+                    "total_points": hw.total_points,
+                    "status": sub.status if sub else "not_started",
+                })
+
+            # Score distribution (bucketed)
+            all_scores = list(
+                my_submissions.filter(score__isnull=False)
+                .annotate(pct=F("score") * 100.0 / F("homework__total_points"))
+                .values_list("pct", flat=True)
+            )
+            score_dist = [
+                {"range": "0-20%", "count": 0},
+                {"range": "21-40%", "count": 0},
+                {"range": "41-60%", "count": 0},
+                {"range": "61-80%", "count": 0},
+                {"range": "81-100%", "count": 0},
+            ]
+            for pct in all_scores:
+                pct_val = float(pct)
+                if pct_val <= 20:
+                    score_dist[0]["count"] += 1
+                elif pct_val <= 40:
+                    score_dist[1]["count"] += 1
+                elif pct_val <= 60:
+                    score_dist[2]["count"] += 1
+                elif pct_val <= 80:
+                    score_dist[3]["count"] += 1
+                else:
+                    score_dist[4]["count"] += 1
 
             return Response({
                 "groups": {"total": my_groups.count()},
@@ -552,10 +878,13 @@ class DashboardStatsAPIView(APIView):
                     }
                     for r in recent_records
                 ],
+                "upcoming_homework": upcoming_hw,
+                "course_progress": course_progress,
                 "charts": {
                     "attendance_status_dist": att_status_dist,
                     "attendance_timeline": att_timeline,
                     "score_trend": score_trend,
+                    "score_distribution": score_dist,
                 },
             })
 
@@ -600,7 +929,6 @@ class ExportExcelAPIView(APIView):
         wb = Workbook()
         wb.remove(wb.active)
 
-                  
         _write_sheet(
             wb, "Users",
             ["Email", "Username", "First Name", "Last Name", "Role", "Active", "Date Joined"],
@@ -610,7 +938,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                    
         _write_sheet(
             wb, "Courses",
             ["Title", "Description", "Price", "Created At"],
@@ -620,7 +947,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                   
         groups_qs = Group.objects.select_related("instructor").prefetch_related("students", "courses").order_by("id")
         _write_sheet(
             wb, "Groups",
@@ -631,7 +957,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                    
         lessons_qs = Lesson.objects.select_related("course", "user").order_by("id")
         _write_sheet(
             wb, "Lessons",
@@ -642,7 +967,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                     
         payments_qs = Payment.objects.select_related("user").order_by("id")
         _write_sheet(
             wb, "Payments",
@@ -653,7 +977,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                             
         purchases_qs = CoursePurchase.objects.select_related("user", "course").order_by("id")
         _write_sheet(
             wb, "Course Purchases",
@@ -664,7 +987,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                                
         sessions_qs = AttendanceSession.objects.select_related("group", "course", "taken_by").order_by("id")
         _write_sheet(
             wb, "Attendance Sessions",
@@ -675,7 +997,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                               
         records_qs = AttendanceRecord.objects.select_related("student", "session__group", "session__course").order_by("id")
         _write_sheet(
             wb, "Attendance Records",
@@ -686,7 +1007,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                     
         hw_qs = Homework.objects.select_related("lesson__course", "created_by").order_by("id")
         _write_sheet(
             wb, "Homework",
@@ -697,7 +1017,6 @@ class ExportExcelAPIView(APIView):
             ],
         )
 
-                                  
         subs_qs = HomeworkSubmission.objects.select_related("student", "homework", "graded_by").order_by("id")
         _write_sheet(
             wb, "Homework Submissions",

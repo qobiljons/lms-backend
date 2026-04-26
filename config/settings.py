@@ -20,13 +20,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
                                                               
                                                                        
 
-                                                                  
-SECRET_KEY = 'django-insecure-xhv7vv))4h4mh2ggho4ma3+u6!o&7&-tlr1&j)!deiubr@xegs'
 
-                                                                 
-DEBUG = True
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xhv7vv))4h4mh2ggho4ma3+u6!o&7&-tlr1&j)!deiubr@xegs')
 
-ALLOWED_HOSTS = ['*']
+
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 
                         
@@ -179,9 +179,14 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_51TAfGbCgenY4cz
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_51TAfGbCgenY4czBrnTIbmSZvjYedKnKKtf5W9pNMdUiDjRY5fENDPvws0ftvqtJI5fMPWGDOIHJpGWjoIRqjoyPb00SMGpVrkW')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
-               
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
 ]
+
+# Add production frontend URL if set
+if FRONTEND_URL and FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+
 CORS_ALLOW_CREDENTIALS = True
