@@ -131,7 +131,8 @@ class HomeworkSubmissionSerializer(serializers.ModelSerializer):
 class HomeworkSubmissionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomeworkSubmission
-        fields = ("homework", "answers", "files", "status")
+        fields = ("id", "homework", "answers", "files", "status")
+        read_only_fields = ("id",)
 
     def create(self, validated_data):
         validated_data["student"] = self.context["request"].user
