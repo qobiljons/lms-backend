@@ -414,6 +414,35 @@ class DashboardStatsAPIView(APIView):
                 AttendanceSession.objects.all(), "session_date", days=14
             )
 
+            # Per-group attendance with exact status counts
+            group_attendance_breakdown = []
+            for g in Group.objects.all().prefetch_related("students")[:10]:
+                g_sessions = AttendanceSession.objects.filter(group=g)
+                g_records = AttendanceRecord.objects.filter(session__in=g_sessions)
+                g_total = g_records.count()
+                if g_total == 0:
+                    continue
+                attended = g_records.filter(status="attended").count()
+                online = g_records.filter(status="attended_online").count()
+                late = g_records.filter(status="late").count()
+                absent = g_records.filter(status="absent").count()
+                excused = g_records.filter(status="excused").count()
+                present_total = attended + online + late
+                rate = round((present_total / g_total * 100), 1) if g_total > 0 else 0
+                group_attendance_breakdown.append({
+                    "name": g.name[:20],
+                    "students": g.students.count(),
+                    "sessions": g_sessions.count(),
+                    "attended": attended,
+                    "online": online,
+                    "late": late,
+                    "absent": absent,
+                    "excused": excused,
+                    "total": g_total,
+                    "rate": rate,
+                })
+            group_attendance_breakdown.sort(key=lambda x: x["rate"], reverse=True)
+
             # Homework stats
             total_hw = Homework.objects.count()
             total_subs = HomeworkSubmission.objects.count()
@@ -611,6 +640,7 @@ class DashboardStatsAPIView(APIView):
                     "payment_status_dist": payment_status_dist,
                     "revenue_by_course": revenue_by_course,
                     "daily_sessions": daily_sessions,
+                    "group_attendance_breakdown": group_attendance_breakdown,
                 },
             })
 
@@ -825,12 +855,7 @@ class DashboardStatsAPIView(APIView):
                     "status": sub.status if sub else "not_started",
                 })
 
-            # Score distribution (bucketed)
-            all_scores = list(
-                my_submissions.filter(score__isnull=False)
-                .annotate(pct=F("score") * 100.0 / F("homework__total_points"))
-                .values_list("pct", flat=True)
-            )
+            # Score distribution (bucketed) — compute safely in Python to avoid div-by-zero
             score_dist = [
                 {"range": "0-20%", "count": 0},
                 {"range": "21-40%", "count": 0},
@@ -838,8 +863,15 @@ class DashboardStatsAPIView(APIView):
                 {"range": "61-80%", "count": 0},
                 {"range": "81-100%", "count": 0},
             ]
-            for pct in all_scores:
-                pct_val = float(pct)
+            scored_subs = my_submissions.filter(score__isnull=False).select_related("homework")
+            for sub in scored_subs:
+                total_pts = sub.homework.total_points or 0
+                if total_pts <= 0:
+                    continue
+                try:
+                    pct_val = (float(sub.score) / float(total_pts)) * 100.0
+                except (TypeError, ValueError, ZeroDivisionError):
+                    continue
                 if pct_val <= 20:
                     score_dist[0]["count"] += 1
                 elif pct_val <= 40:
