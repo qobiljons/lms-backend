@@ -8,8 +8,33 @@ User = get_user_model()
 
 class HomeworkSerializer(serializers.ModelSerializer):
     lesson_title = serializers.CharField(source="lesson.title", read_only=True)
+    lesson_order = serializers.SerializerMethodField()
+    lesson_total = serializers.SerializerMethodField()
+    course_id = serializers.IntegerField(source="lesson.course_id", read_only=True)
+    course_title = serializers.CharField(source="lesson.course.title", read_only=True)
+    course_slug = serializers.CharField(source="lesson.course.slug", read_only=True)
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     submission_status = serializers.SerializerMethodField()
+
+    def get_lesson_order(self, obj):
+        if not obj.lesson_id or not obj.lesson.course_id:
+            return None
+        from apps.lessons.models import Lesson
+        ids = list(
+            Lesson.objects.filter(course_id=obj.lesson.course_id)
+            .order_by("created_at", "id")
+            .values_list("id", flat=True)
+        )
+        try:
+            return ids.index(obj.lesson_id) + 1
+        except ValueError:
+            return None
+
+    def get_lesson_total(self, obj):
+        if not obj.lesson_id or not obj.lesson.course_id:
+            return None
+        from apps.lessons.models import Lesson
+        return Lesson.objects.filter(course_id=obj.lesson.course_id).count()
 
     class Meta:
         model = Homework
@@ -17,6 +42,11 @@ class HomeworkSerializer(serializers.ModelSerializer):
             "id",
             "lesson",
             "lesson_title",
+            "lesson_order",
+            "lesson_total",
+            "course_id",
+            "course_title",
+            "course_slug",
             "title",
             "description",
             "questions",

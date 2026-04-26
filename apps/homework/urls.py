@@ -20,4 +20,9 @@ urlpatterns = [
         api.HomeworkFileUploadAPIView.as_view(),
         name="homework_file_upload",
     ),
+    path(
+        "submissions/<int:submission_id>/ai-grade/",
+        api.AIAutoGradeAPIView.as_view(),
+        name="homework_ai_grade",
+    ),
 ]
