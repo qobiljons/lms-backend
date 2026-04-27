@@ -232,13 +232,16 @@ class HomeworkSubmissionDetailAPIView(APIView):
             serializer = HomeworkSubmissionSerializer(
                 submission, data=request.data, partial=True
             )
-            if "score" in request.data or "feedback" in request.data:
-                request.data["graded_at"] = timezone.now()
-                request.data["graded_by"] = request.user.id
-                request.data["status"] = "graded"
 
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        if request.user.role != "student" and ("score" in request.data or "feedback" in request.data):
+            serializer.save(
+                graded_at=timezone.now(),
+                graded_by=request.user,
+                status="graded",
+            )
+        else:
+            serializer.save()
         return Response(HomeworkSubmissionSerializer(submission).data)
 
 class HomeworkFileUploadAPIView(APIView):
