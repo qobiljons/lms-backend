@@ -219,11 +219,6 @@ class HomeworkSubmissionDetailAPIView(APIView):
                     {"detail": "You can only update your own submissions."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            if submission.status == "graded":
-                return Response(
-                    {"detail": "Cannot update a graded submission."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             serializer = HomeworkSubmissionCreateSerializer(
                 submission, data=request.data, partial=True, context={"request": request}
             )
@@ -273,12 +268,6 @@ class HomeworkFileUploadAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if submission.status == "graded":
-            return Response(
-                {"detail": "Cannot upload files to a graded submission."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
             return Response(
@@ -310,6 +299,10 @@ class HomeworkFileUploadAPIView(APIView):
             file_type=content_type,
             file_size=uploaded_file.size,
         )
+
+        if submission.status in ("graded", "submitted"):
+            submission.status = "draft"
+            submission.save(update_fields=["status", "updated_at"])
 
         return Response(
             HomeworkFileSerializer(homework_file).data,
