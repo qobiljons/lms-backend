@@ -479,13 +479,23 @@ class AIAutoGradeAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            target_path = files[0] if len(files) == 1 else tmp
+            TYPE_EXTS = {
+                "python": {".py"},
+                "sql": {".sql", ".txt"},
+                "ssis": {".dtsx", ".sln", ".dtproj"},
+                "power_bi": {".pbit", ".pbix", ".pdf"},
+            }
+            relevant_exts = TYPE_EXTS.get(qtype, set())
+            relevant = [f for f in files if os.path.splitext(f)[1].lower() in relevant_exts]
+            if not relevant:
+                relevant = files
+            target_path = relevant[0] if len(relevant) == 1 else tmp
 
             try:
                 if qtype == "power_bi":
                     raw = self._evaluate_power_bi(submission, target_path)
                 else:
-                    raw = self._evaluate_quantum(submission, target_path, qtype)
+                    raw = self._evaluate_quantum(submission, relevant[0] if relevant else files[0], qtype)
             except ImportError as e:
                 return Response(
                     {"detail": f"Evaluator package not installed on server: {e}"},
